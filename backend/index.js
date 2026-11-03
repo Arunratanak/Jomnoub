@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import dns from 'node:dns';
-dns.setServers(['8.8.8.8', '1.1.1.1']);
+if (process.env.NODE_ENV !== 'production') {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+}
 import app from './app.js';
 import connectDB from './src/config/db.js';
 
