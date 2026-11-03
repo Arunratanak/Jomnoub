@@ -4,6 +4,7 @@ import cors from 'cors';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import authRoutes from './src/routes/auth.js';
+import projectRoutes from './src/routes/projects.js';
 
 import statusRoute from './src/routes/status.js';
 import errorHandler from './src/middleware/handleError.js';
@@ -23,6 +24,7 @@ app.use(cookieParser());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/status', statusRoute);
+app.use('/api/projects', projectRoutes);
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 app.use(errorHandler);

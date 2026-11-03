@@ -10,4 +10,12 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+userSchema.set('toJSON', {
+  transform: (doc, ret) => {
+    delete ret.googleId;
+    delete ret.__v;
+    return ret;
+  },
+});
+
 export default mongoose.model('User', userSchema);
