@@ -1,0 +1,28 @@
+import express from 'express';
+import helmet from 'helmet';
+import cors from 'cors';
+import morgan from 'morgan';
+import cookieParser from 'cookie-parser';
+
+import statusRoute from './src/routes/status.js';
+import errorHandler from './src/middleware/handleError.js';
+
+const app = express();
+
+app.set('trust proxy', 1); // needed later behind Render's proxy
+
+app.use(helmet());
+app.use(cors({
+  origin: process.env.FRONTEND_URL,
+  credentials: true,
+}));
+app.use(morgan('dev'));
+app.use(express.json({ limit: '10kb' }));
+app.use(cookieParser());
+
+app.use('/api/status', statusRoute);
+
+app.use((req, res) => res.status(404).json({ error: 'Not found' }));
+app.use(errorHandler);
+
+export default app;
