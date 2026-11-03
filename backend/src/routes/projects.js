@@ -1,17 +1,22 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import Project from '../models/Project.js';
+import taskRoutes from './tasks.js';
+import Task from '../models/Task.js';
 import requireAuth from '../middleware/auth.js';
 import { requireMember, requireOwner } from '../middleware/requireMember.js';
 
 const router = Router();
 router.use(requireAuth);
+router.use('/:projectId/tasks', requireMember, taskRoutes);
 
 const createSchema = z.object({
   name: z.string().trim().min(1).max(100),
   description: z.string().trim().max(500).optional().default(''),
 });
 const updateSchema = createSchema.partial();
+
+
 
 // Create a project (the creator becomes its owner)
 router.post('/', async (req, res) => {
@@ -55,6 +60,7 @@ router.patch('/:projectId', requireMember, requireOwner, async (req, res) => {
 
 // Delete (owner only)
 router.delete('/:projectId', requireMember, requireOwner, async (req, res) => {
+  await Task.deleteMany({ project: req.project._id });
   await req.project.deleteOne();
   res.json({ ok: true });
 });
