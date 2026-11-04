@@ -4,6 +4,7 @@ import api from '../api/client';
 import { isOverdue } from '../utils/dates';
 import Loading from '../components/Loading';
 import NotificationBell from '../components/NotificationBell';
+import useTitle from '../utils/useTitle';
 import { notifyTasksChanged } from '../utils/events';
 
 const STATUSES = [
@@ -16,6 +17,7 @@ export default function MyTasks() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showDone, setShowDone] = useState(false);
+  useTitle('My tasks');
   const [error, setError] = useState('');
 
   const load = () =>
@@ -64,7 +66,7 @@ export default function MyTasks() {
             key={t._id}
             style={{
               border: `1px solid ${isOverdue(t) ? 'crimson' : '#ccc'}`,
-              borderRadius: 8, padding: 12, margin: '12px 0',
+              borderRadius: 8, padding: 12, margin: '12px 0', overflowWrap: 'anywhere',
             }}
           >
             <strong>{t.title}</strong>

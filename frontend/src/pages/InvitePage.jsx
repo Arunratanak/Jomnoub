@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import api from '../api/client';
 import Loading from '../components/Loading';
+import useTitle from '../utils/useTitle';
 
 export default function InvitePage() {
   const { token } = useParams();
@@ -9,6 +10,7 @@ export default function InvitePage() {
   const [invite, setInvite] = useState(null);
   const [error, setError] = useState('');
   const [joining, setJoining] = useState(false);
+  useTitle(invite ? `Join ${invite.projectName}` : 'Project invite');
 
   useEffect(() => {
     api
@@ -48,7 +50,7 @@ export default function InvitePage() {
   return (
     <div style={box}>
       <h2>You're invited to join</h2>
-      <h1>{invite.projectName}</h1>
+      <h1 style={{ overflowWrap: 'anywhere' }}>{invite.projectName}</h1>
       <p>
         {invite.memberCount} member{invite.memberCount === 1 ? '' : 's'} · link expires{' '}
         {new Date(invite.expiresAt).toLocaleDateString()}

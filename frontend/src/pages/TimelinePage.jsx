@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api from '../api/client';
 import Loading from '../components/Loading';
+import useTitle from '../utils/useTitle';
 import { OVERDUE, NO_DEADLINE, utcDay, groupTasks } from '../utils/timeline';
 
 const STATUS_LABELS = { todo: 'To do', 'in-progress': 'In progress', done: 'Done' };
@@ -21,6 +22,7 @@ export default function TimelinePage() {
   const [tasks, setTasks] = useState(null);
   const [loadError, setLoadError] = useState(null); // 'notFound' | 'failed' | null
   const [showDone, setShowDone] = useState(false);
+  useTitle(project ? `${project.name} timeline` : loadError === 'notFound' ? 'Project not found' : 'Timeline');
 
   useEffect(() => {
     Promise.all([api.get(`/projects/${id}`), api.get(`/projects/${id}/tasks`)])
@@ -53,7 +55,7 @@ export default function TimelinePage() {
   return (
     <div style={{ maxWidth: 720, margin: '40px auto', padding: '0 16px' }}>
       <Link to={`/projects/${id}`}>← Back to project</Link>
-      <h1>{project.name}: timeline</h1>
+      <h1 style={{ overflowWrap: 'anywhere' }}>{project.name}: timeline</h1>
       <label>
         <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} /> Show completed
       </label>

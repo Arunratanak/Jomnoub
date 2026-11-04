@@ -6,6 +6,7 @@ import ProjectStats from '../components/ProjectStats';
 import Loading from '../components/Loading';
 import ActivityPanel from '../components/ActivityPanel';
 import NotificationBell from '../components/NotificationBell';
+import useTitle from '../utils/useTitle';
 import { notifyTasksChanged } from '../utils/events';
 import { isOverdue } from '../utils/dates';
 
@@ -35,6 +36,7 @@ export default function ProjectPage() {
   const [inviteMsg, setInviteMsg] = useState('');
   const [activity, setActivity] = useState(null);
   const [activityError, setActivityError] = useState(false);
+  useTitle(data ? data.project.name : loadError === 'notFound' ? 'Project not found' : 'Project');
 
   const loadProject = async () => {
     const res = await api.get(`/projects/${id}`);
@@ -255,8 +257,8 @@ export default function ProjectPage() {
         </form>
       ) : (
         <>
-          <h1>{project.name}</h1>
-          <p>{project.description}</p>
+          <h1 style={{ overflowWrap: 'anywhere' }}>{project.name}</h1>
+          <p style={{ overflowWrap: 'anywhere' }}>{project.description}</p>
           {isOwner && (
             <button onClick={() => setProjectForm({ name: project.name, description: project.description || '' })}>
               Edit project
@@ -269,7 +271,7 @@ export default function ProjectPage() {
         <h2>Members ({project.members.length})</h2>
         <ul style={{ listStyle: 'none', padding: 0, display: 'grid', gap: 6 }}>
           {project.members.map((m) => (
-            <li key={m.user._id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <li key={m.user._id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', overflowWrap: 'anywhere' }}>
               <span>
                 <strong>{m.user.name}</strong> <small>{m.user.email} · {m.role}</small>
               </span>
@@ -287,7 +289,7 @@ export default function ProjectPage() {
               onChange={(e) => setMemberEmail(e.target.value)}
               placeholder="Teammate's Google email"
               required
-              style={{ flex: 1 }}
+              style={{ flex: 1, minWidth: 0 }}
             />
             <button type="submit">Add member</button>
           </form>
@@ -347,7 +349,7 @@ export default function ProjectPage() {
           <div key={col.value}>
             <h3>{col.label} ({tasks.filter((t) => t.status === col.value).length})</h3>
             {tasks.filter((t) => t.status === col.value).map((t) => (
-              <div key={t._id} style={{ border: `1px solid ${isOverdue(t) ? 'crimson' : '#ccc'}`, borderRadius: 8, padding: 10, marginBottom: 8 }}>
+              <div key={t._id} style={{ border: `1px solid ${isOverdue(t) ? 'crimson' : '#ccc'}`, borderRadius: 8, padding: 10, marginBottom: 8, overflowWrap: 'anywhere' }}>
                 <strong>{t.title}</strong>
                 {t.description && <div>{t.description}</div>}
                 <small>

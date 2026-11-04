@@ -13,6 +13,8 @@ const projectSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true, maxlength: 100 },
     description: { type: String, trim: true, maxlength: 500, default: '' },
     members: [memberSchema],
+    // Created by scripts/seed.js; lets `npm run seed:clear` remove only demo data
+    isDemo: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

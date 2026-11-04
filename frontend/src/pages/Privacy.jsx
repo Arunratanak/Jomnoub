@@ -1,4 +1,7 @@
+import useTitle from '../utils/useTitle';
+
 export default function Privacy() {
+  useTitle('Privacy policy');
   const contactEmail = 'your-email@example.com'; // replace with your real email
   const lastUpdated = 'November 3, 2026';
 

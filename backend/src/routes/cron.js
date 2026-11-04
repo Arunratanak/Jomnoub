@@ -76,7 +76,7 @@ router.post('/reminders', requireCronSecret, async (req, res) => {
     deadline: { $ne: null, $lte: dueSoonLimit },
   })
     .select('title deadline assignee project')
-    .populate('assignee', 'name email')
+    .populate('assignee', 'name email isDemo')
     .populate('project', 'name')
     .lean();
 
@@ -88,6 +88,7 @@ router.post('/reminders', requireCronSecret, async (req, res) => {
   try {
     for (const t of tasks) {
       if (!t.assignee?.email || !t.project) { skipped += 1; continue; } // deleted user/project
+      if (t.assignee.isDemo) { skipped += 1; continue; } // seed data: fake @example.invalid users
 
       const type = t.deadline < today ? 'overdue' : 'due-soon';
       const key = { task: t._id, type, deadline: t.deadline };

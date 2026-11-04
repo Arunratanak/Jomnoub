@@ -4,9 +4,11 @@ import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import Loading from '../components/Loading';
 import NotificationBell from '../components/NotificationBell';
+import useTitle from '../utils/useTitle';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
+  useTitle('Dashboard');
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
@@ -46,11 +48,11 @@ export default function Dashboard() {
 
   return (
     <div style={{ maxWidth: 640, margin: '60px auto', padding: '0 16px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         {user.picture && (
           <img src={user.picture} alt="" width={40} height={40} style={{ borderRadius: '50%' }} referrerPolicy="no-referrer" />
         )}
-        <div>
+        <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
           <strong>{user.name}</strong>
           <div>{user.email}</div>
         </div>
@@ -79,7 +81,7 @@ export default function Dashboard() {
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, display: 'grid', gap: 8 }}>
           {projects.map((p) => (
-            <li key={p.id} style={{ border: '1px solid #ccc', borderRadius: 8, padding: 12 }}>
+            <li key={p.id} style={{ border: '1px solid #ccc', borderRadius: 8, padding: 12, overflowWrap: 'anywhere' }}>
               <Link to={`/projects/${p.id}`}><strong>{p.name}</strong></Link>
               <div>{p.description}</div>
               <small>{p.role} · {p.memberCount} member{p.memberCount === 1 ? '' : 's'}</small>

@@ -6,6 +6,9 @@ const userSchema = new mongoose.Schema(
     email: { type: String, required: true, lowercase: true, index: true },
     name: { type: String, required: true },
     picture: String,
+    // Fake teammates created by scripts/seed.js. They can't sign in (no real
+    // Google account) and the reminder job never emails them.
+    isDemo: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

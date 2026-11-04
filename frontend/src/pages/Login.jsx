@@ -3,12 +3,14 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 import Loading from '../components/Loading';
+import useTitle from '../utils/useTitle';
 
 // Only follow in-app paths, never "//evil.com" or full URLs (open redirect)
 const safePath = (p) => (typeof p === 'string' && p.startsWith('/') && !p.startsWith('//') ? p : '/dashboard');
 
 export default function Login() {
   const { user, loading, loginWithGoogle } = useAuth();
+  useTitle('Sign in');
   const location = useLocation();
   const [error, setError] = useState('');
   const from = safePath(location.state?.from);
@@ -18,7 +20,7 @@ export default function Login() {
   if (user) return <Navigate to={from} replace />;
 
   return (
-    <div style={{ maxWidth: 360, margin: '120px auto', textAlign: 'center' }}>
+    <div style={{ maxWidth: 360, margin: '120px auto', padding: '0 16px', textAlign: 'center' }}>
       <h1>TaskHub</h1>
       <p>Organize and track your group work.</p>
       {fromInvite && <p><strong>Sign in to accept your project invite.</strong></p>}
