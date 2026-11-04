@@ -1,5 +1,6 @@
-import jwt from 'jsonwebtoken';
 import { rateLimit, ipKeyGenerator, MINUTE, HOUR } from 'express-rate-limit';
+import { SESSION_COOKIE } from '../config/auth.js';
+import { verifySessionToken } from '../services/authService.js';
 
 // Limits are generous so two-account demo testing never hits them; they only
 // stop scripted abuse. Counters live in memory, so they reset when the server restarts.
@@ -18,10 +19,10 @@ const userKey = (req) => (req.user ? `user:${req.user.id}` : ipKey(req));
 // For the global limiter, which runs before requireAuth: identify the user from
 // their login cookie if it's valid (cheap signature check, no database call)
 function cookieUserKey(req) {
-  const token = req.cookies?.token;
+  const token = req.cookies?.[SESSION_COOKIE];
   if (typeof token === 'string' && process.env.JWT_SECRET) {
     try {
-      const { id } = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
+      const id = verifySessionToken(token);
       if (id) return `user:${id}`;
     } catch {
       // invalid or expired token: treat as anonymous

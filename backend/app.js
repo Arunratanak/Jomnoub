@@ -3,15 +3,14 @@ import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
-import authRoutes from './src/routes/auth.js';
-import projectRoutes from './src/routes/projects.js';
-import myTaskRoutes from './src/routes/myTasks.js';
-import inviteRoutes from './src/routes/invites.js';
-import cronRoutes from './src/routes/cron.js';
-
-import statusRoute from './src/routes/status.js';
-import errorHandler from './src/middleware/handleError.js';
-import { generalLimiter, loginLimiter } from './src/middleware/rateLimit.js';
+import authRoutes from './src/routes/authRoutes.js';
+import projectRoutes from './src/routes/projectRoutes.js';
+import myTaskRoutes from './src/routes/myTaskRoutes.js';
+import inviteRoutes from './src/routes/inviteRoutes.js';
+import cronRoutes from './src/routes/cronRoutes.js';
+import statusRoutes from './src/routes/statusRoutes.js';
+import errorHandler from './src/middlewares/errorHandler.js';
+import { generalLimiter, loginLimiter } from './src/middlewares/rateLimit.js';
 
 const app = express();
 
@@ -36,7 +35,7 @@ app.use(cookieParser());
 app.use('/api', generalLimiter);
 app.use('/api/auth/google', loginLimiter);
 app.use('/api/auth', authRoutes);
-app.use('/api/status', statusRoute);
+app.use('/api/status', statusRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/my-tasks', myTaskRoutes);
 app.use('/api/invites', inviteRoutes);

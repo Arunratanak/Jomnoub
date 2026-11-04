@@ -19,3 +19,15 @@ export const quote = (title) => {
   const t = String(title ?? '');
   return `"${t.length > 60 ? `${t.slice(0, 57)}...` : t}"`;
 };
+
+// Latest 30 entries, newest first, with the actor's name only
+export function listActivity(projectId) {
+  return Activity.find({ project: projectId })
+    .sort({ createdAt: -1 })
+    .limit(30)
+    .populate('actor', 'name')
+    .select('actor message createdAt')
+    .lean();
+}
+
+export const deleteProjectActivity = (projectId) => Activity.deleteMany({ project: projectId });

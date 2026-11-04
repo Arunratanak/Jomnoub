@@ -1,32 +1,17 @@
-import crypto from 'node:crypto';
-import { Router } from 'express';
-import { z } from 'zod';
 import Task from '../models/Task.js';
 import ReminderLog from '../models/ReminderLog.js';
-import { sendEmail, escapeHtml } from '../utils/email.js';
-
-const router = Router();
+import { sendEmail, escapeHtml } from './emailService.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DUE_SOON_DAYS = 2;
 const SEND_GAP_MS = 600; // Resend's free tier allows 2 requests per second
 
-// Machine-to-machine auth for the scheduled job. Deliberately NOT requireAuth (user cookies).
-function requireCronSecret(req, res, next) {
-  const secret = process.env.CRON_SECRET;
-  const given = Buffer.from(req.get('authorization') || '');
-  const expected = Buffer.from(`Bearer ${secret || ''}`);
-  // No secret configured -> reject everything. Length check first: timingSafeEqual throws on unequal lengths.
-  if (!secret || given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-  next();
-}
-
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const formatDate = (d) => new Date(d).toISOString().slice(0, 10); // deadlines are UTC dates
 
-function buildEmail(name, overdue, dueSoon) {
+// One summary email: subject with counts, overdue and due-soon sections, link to My Tasks.
+// Every user-supplied value in the HTML is escaped.
+export function buildReminderEmail(name, overdue, dueSoon) {
   const parts = [];
   if (overdue.length) parts.push(`${overdue.length} overdue`);
   if (dueSoon.length) parts.push(`${dueSoon.length} due soon`);
@@ -61,11 +46,10 @@ function buildEmail(name, overdue, dueSoon) {
   return { subject, text, html };
 }
 
-const querySchema = z.object({ dryRun: z.enum(['true', 'false']).optional() });
-
-router.post('/reminders', requireCronSecret, async (req, res) => {
-  const dryRun = querySchema.parse(req.query).dryRun === 'true';
-
+// Emails each person one summary of their unfinished tasks that are overdue or
+// due within 2 days. Never sends the same reminder twice. With dryRun, sends
+// nothing and writes nothing. Returns counts only.
+export async function runReminders({ dryRun }) {
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
   const dueSoonLimit = new Date(today.getTime() + DUE_SOON_DAYS * DAY_MS);
@@ -124,7 +108,7 @@ router.post('/reminders', requireCronSecret, async (req, res) => {
     for (const { user, overdue, dueSoon, logIds } of byUser.values()) {
       if (emails + failures > 0) await sleep(SEND_GAP_MS);
       try {
-        await sendEmail({ to: user.email, ...buildEmail(user.name, overdue, dueSoon) });
+        await sendEmail({ to: user.email, ...buildReminderEmail(user.name, overdue, dueSoon) });
         emails += 1;
       } catch (err) {
         failures += 1;
@@ -134,14 +118,10 @@ router.post('/reminders', requireCronSecret, async (req, res) => {
     }
   }
 
-  res.json({
-    ok: true,
-    dryRun,
+  return {
     tasksFound: tasks.length,
     skipped,
     emails: dryRun ? byUser.size : emails, // dry run: how many emails WOULD be sent
     failures,
-  });
-});
-
-export default router;
+  };
+}

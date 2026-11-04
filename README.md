@@ -78,10 +78,24 @@ backend/
   index.js               starts the server (loads .env, connects to MongoDB)
   app.js                 Express app: middleware, routes, error handler
   scripts/seed.js        demo data (npm run seed / seed:clear)
-  src/models/            User, Project, Task, Invite, Activity, ReminderLog
-  src/routes/            auth, projects, tasks, invites, myTasks, cron, status
-  src/middleware/        auth (requireAuth), requireMember/requireOwner, rateLimit, handleError
-  src/utils/             email (Resend + escapeHtml), activity, validate
+  src/
+    config/              db (MongoDB connection), auth (cookie and JWT settings)
+    routes/              URL -> middlewares -> controller, one file per area (*Routes.js)
+    controllers/         read the request, call a service, send the response (*Controller.js)
+    services/            business logic and database work (*Service.js), incl. email and activity
+    middlewares/         requireAuth, requireMember/requireOwner, loadTask, loadInvite,
+                         requireCronSecret, rateLimit, errorHandler
+    validations/         zod schemas for every request body/query, ObjectId check
+    dto/                 response shapes (project list item, invite preview)
+    exceptions/          HttpError classes (NotFound, Forbidden, ...) turned into JSON by errorHandler
+    models/              Mongoose models: User, Project, Task, Invite, Activity, ReminderLog
+    data/                demo content used by the seed script
+
+Request flow: route -> middlewares (auth, membership, rate limit) -> controller
+(validates with zod) -> service (rules + database) -> JSON response. Services throw
+HttpError subclasses; middlewares/errorHandler.js sends them as { "error": "..." }.
+(There is no uploads/ folder: TaskHub has no file uploads.)
+
 frontend/
   src/pages/             Login, Dashboard, ProjectPage, TimelinePage, MyTasks, InvitePage, Privacy
   src/components/        ProtectedRoute, ProjectStats, ActivityPanel, NotificationBell, Loading
