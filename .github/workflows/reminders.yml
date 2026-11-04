@@ -1,0 +1,27 @@
+name: Daily task reminders
+
+on:
+  schedule:
+    - cron: '0 1 * * *' # 01:00 UTC every day
+  workflow_dispatch: # allows a manual run from the Actions tab
+
+permissions: {} # this job only calls our backend; it needs no GitHub permissions
+
+jobs:
+  send-reminders:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Trigger reminder emails
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        # Retries cover the free Render backend waking up from sleep.
+        # Retrying is safe: the backend claims each reminder before sending, so nothing is sent twice.
+        run: |
+          curl --fail-with-body --silent --show-error \
+            --retry 3 --retry-delay 20 --retry-all-errors \
+            --max-time 120 \
+            -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$BACKEND_URL/api/cron/reminders"

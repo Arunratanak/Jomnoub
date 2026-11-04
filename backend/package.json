@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "engines": { "node": "22.x" },
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js",
@@ -23,6 +25,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.11.4",
     "morgan": "^1.12.1",
+    "resend": "^6.37.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
