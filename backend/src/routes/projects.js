@@ -1,6 +1,8 @@
 import { Router } from 'express';
+import mongoose from 'mongoose';
 import { z } from 'zod';
 import Project from '../models/Project.js';
+import User from '../models/User.js';
 import taskRoutes from './tasks.js';
 import Task from '../models/Task.js';
 import requireAuth from '../middleware/auth.js';
@@ -14,9 +16,13 @@ const createSchema = z.object({
   name: z.string().trim().min(1).max(100),
   description: z.string().trim().max(500).optional().default(''),
 });
-const updateSchema = createSchema.partial();
-
-
+// Separate schema without .default(), so a PATCH that omits description doesn't wipe it
+const updateSchema = z.object({
+  name: z.string().trim().min(1).max(100).optional(),
+  description: z.string().trim().max(500).optional(),
+});
+const addMemberSchema = z.object({ email: z.string().trim().toLowerCase().email() });
+const memberSelect = 'name email picture';
 
 // Create a project (the creator becomes its owner)
 router.post('/', async (req, res) => {
@@ -46,7 +52,7 @@ router.get('/', async (req, res) => {
 
 // View one project
 router.get('/:projectId', requireMember, async (req, res) => {
-  await req.project.populate('members.user', 'name email picture');
+  await req.project.populate('members.user', memberSelect);
   res.json({ project: req.project, role: req.role });
 });
 
@@ -55,6 +61,7 @@ router.patch('/:projectId', requireMember, requireOwner, async (req, res) => {
   const updates = updateSchema.parse(req.body);
   Object.assign(req.project, updates);
   await req.project.save();
+  await req.project.populate('members.user', memberSelect);
   res.json({ project: req.project });
 });
 
@@ -62,6 +69,44 @@ router.patch('/:projectId', requireMember, requireOwner, async (req, res) => {
 router.delete('/:projectId', requireMember, requireOwner, async (req, res) => {
   await Task.deleteMany({ project: req.project._id });
   await req.project.deleteOne();
+  res.json({ ok: true });
+});
+
+// Add a member by email (owner only). The person must have signed in to TaskHub once.
+router.post('/:projectId/members', requireMember, requireOwner, async (req, res) => {
+  const { email } = addMemberSchema.parse(req.body);
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res.status(404).json({ error: 'No TaskHub user with that email. They need to sign in once first.' });
+  }
+  if (req.project.members.some((m) => m.user.equals(user._id))) {
+    return res.status(409).json({ error: 'That person is already a member' });
+  }
+
+  req.project.members.push({ user: user._id, role: 'member' });
+  await req.project.save();
+  await req.project.populate('members.user', memberSelect);
+  res.status(201).json({ members: req.project.members });
+});
+
+// Remove a member (owner), or leave the project (any non-owner member removing themselves)
+router.delete('/:projectId/members/:userId', requireMember, async (req, res) => {
+  const { userId } = req.params;
+  if (!mongoose.isValidObjectId(userId)) return res.status(404).json({ error: 'Not found' });
+
+  const isSelf = req.user._id.equals(userId);
+  if (req.role !== 'owner' && !isSelf) return res.status(403).json({ error: 'Owners only' });
+
+  const member = req.project.members.find((m) => m.user.equals(userId));
+  if (!member) return res.status(404).json({ error: 'Not found' });
+  if (member.role === 'owner') {
+    return res.status(400).json({ error: 'The owner cannot leave. Delete the project instead.' });
+  }
+
+  req.project.members = req.project.members.filter((m) => !m.user.equals(userId));
+  await req.project.save();
+  // Keep the rule "assignees must be members": unassign their tasks in this project
+  await Task.updateMany({ project: req.project._id, assignee: userId }, { assignee: null });
   res.json({ ok: true });
 });
 

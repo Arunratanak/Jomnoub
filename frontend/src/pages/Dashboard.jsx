@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import Loading from '../components/Loading';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -10,11 +11,16 @@ export default function Dashboard() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState('');
 
   const load = () =>
     api
       .get('/projects')
-      .then((res) => setProjects(res.data.projects))
+      .then((res) => {
+        setProjects(res.data.projects);
+        setLoadError('');
+      })
+      .catch(() => setLoadError('Could not load your projects. Refresh the page to try again.'))
       .finally(() => setLoading(false));
 
   useEffect(() => {
@@ -28,9 +34,11 @@ export default function Dashboard() {
       await api.post('/projects', { name, description });
       setName('');
       setDescription('');
-      load();
-    } catch {
-      setError('Could not create the project. Check the name and try again.');
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.error === 'Invalid input'
+        ? 'Could not create the project. Check the name and try again.'
+        : 'Could not create the project. Please try again.');
     }
   };
 
@@ -58,7 +66,9 @@ export default function Dashboard() {
 
       <h2>Your projects</h2>
       {loading ? (
-        <p>Loading...</p>
+        <Loading />
+      ) : loadError ? (
+        <p style={{ color: 'crimson' }}>{loadError}</p>
       ) : projects.length === 0 ? (
         <p>No projects yet. Create your first one above.</p>
       ) : (

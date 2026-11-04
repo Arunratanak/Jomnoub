@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
 import { isOverdue } from '../utils/dates';
+import Loading from '../components/Loading';
 
 const STATUSES = [
   { value: 'todo', label: 'To do' },
@@ -19,6 +20,7 @@ export default function MyTasks() {
     api
       .get('/my-tasks')
       .then((res) => setTasks(res.data.tasks))
+      .catch(() => setError('Could not load your tasks. Refresh the page to try again.'))
       .finally(() => setLoading(false));
 
   useEffect(() => {
@@ -47,8 +49,8 @@ export default function MyTasks() {
       {error && <p style={{ color: 'crimson' }}>{error}</p>}
 
       {loading ? (
-        <p>Loading...</p>
-      ) : visible.length === 0 ? (
+        <Loading />
+      ) : error && tasks.length === 0 ? null : visible.length === 0 ? (
         <p>Nothing assigned to you right now.</p>
       ) : (
         visible.map((t) => (

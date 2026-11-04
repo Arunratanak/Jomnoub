@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
+import Loading from '../components/Loading';
 
 export default function Login() {
   const { user, loading, loginWithGoogle } = useAuth();
   const [error, setError] = useState('');
 
-  if (loading) return <p>Loading...</p>;
+  if (loading) return <Loading />;
   if (user) return <Navigate to="/dashboard" replace />;
 
   return (
