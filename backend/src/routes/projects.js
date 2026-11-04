@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { z } from 'zod';
 import Project from '../models/Project.js';
 import User from '../models/User.js';
+import Invite, { INVITE_TTL_MS, hashToken, newToken } from '../models/Invite.js';
 import taskRoutes from './tasks.js';
 import Task from '../models/Task.js';
 import requireAuth from '../middleware/auth.js';
@@ -21,7 +22,7 @@ const updateSchema = z.object({
   name: z.string().trim().min(1).max(100).optional(),
   description: z.string().trim().max(500).optional(),
 });
-const addMemberSchema = z.object({ email: z.string().trim().toLowerCase().email() });
+const addMemberSchema = z.object({ email: z.string().trim().toLowerCase().pipe(z.email()) });
 const memberSelect = 'name email picture';
 
 // Create a project (the creator becomes its owner)
@@ -68,6 +69,7 @@ router.patch('/:projectId', requireMember, requireOwner, async (req, res) => {
 // Delete (owner only)
 router.delete('/:projectId', requireMember, requireOwner, async (req, res) => {
   await Task.deleteMany({ project: req.project._id });
+  await Invite.deleteMany({ project: req.project._id });
   await req.project.deleteOne();
   res.json({ ok: true });
 });
@@ -99,14 +101,37 @@ router.delete('/:projectId/members/:userId', requireMember, async (req, res) => 
 
   const member = req.project.members.find((m) => m.user.equals(userId));
   if (!member) return res.status(404).json({ error: 'Not found' });
-  if (member.role === 'owner') {
-    return res.status(400).json({ error: 'The owner cannot leave. Delete the project instead.' });
+  const ownerCount = req.project.members.filter((m) => m.role === 'owner').length;
+  if (member.role === 'owner' && ownerCount === 1) {
+    return res.status(400).json({ error: 'The last owner cannot be removed. Delete the project instead.' });
   }
 
   req.project.members = req.project.members.filter((m) => !m.user.equals(userId));
   await req.project.save();
   // Keep the rule "assignees must be members": unassign their tasks in this project
   await Task.updateMany({ project: req.project._id, assignee: userId }, { assignee: null });
+  res.json({ ok: true });
+});
+
+// Generate an invite link (owner only). Only one link is active per project:
+// generating a new one invalidates the old one.
+router.post('/:projectId/invites', requireMember, requireOwner, async (req, res) => {
+  const token = newToken();
+  const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
+  await Invite.deleteMany({ project: req.project._id });
+  await Invite.create({
+    project: req.project._id,
+    tokenHash: hashToken(token),
+    createdBy: req.user._id,
+    expiresAt,
+  });
+  // The raw token is only returned here, once; the database keeps just its hash
+  res.status(201).json({ token, expiresAt });
+});
+
+// Disable the current invite link (owner only)
+router.delete('/:projectId/invites', requireMember, requireOwner, async (req, res) => {
+  await Invite.deleteMany({ project: req.project._id });
   res.json({ ok: true });
 });
 

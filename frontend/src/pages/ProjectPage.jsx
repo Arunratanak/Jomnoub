@@ -28,6 +28,8 @@ export default function ProjectPage() {
   const [memberEmail, setMemberEmail] = useState('');
   const [memberError, setMemberError] = useState('');
   const [projectForm, setProjectForm] = useState(null); // { name, description } while editing
+  const [invite, setInvite] = useState(null); // { url, expiresAt } right after generating
+  const [inviteMsg, setInviteMsg] = useState('');
 
   const loadProject = async () => {
     const res = await api.get(`/projects/${id}`);
@@ -157,6 +159,38 @@ export default function ProjectPage() {
     }
   };
 
+  // ---------- Invite links ----------
+  const generateInvite = async () => {
+    if (invite && !window.confirm('Generate a new link? The current link will stop working.')) return;
+    setInviteMsg('');
+    try {
+      const res = await api.post(`/projects/${id}/invites`);
+      setInvite({ url: `${window.location.origin}/invite/${res.data.token}`, expiresAt: res.data.expiresAt });
+    } catch (err) {
+      setInviteMsg(errorMessage(err, 'Could not create an invite link.'));
+    }
+  };
+
+  const copyInvite = async () => {
+    try {
+      await navigator.clipboard.writeText(invite.url);
+      setInviteMsg('Link copied.');
+    } catch {
+      setInviteMsg('Copy failed. Select the link and copy it manually.');
+    }
+  };
+
+  const disableInvite = async () => {
+    if (!window.confirm('Disable invite links for this project? Anyone with an old link won\'t be able to join.')) return;
+    try {
+      await api.delete(`/projects/${id}/invites`);
+      setInvite(null);
+      setInviteMsg('Invite links disabled.');
+    } catch (err) {
+      setInviteMsg(errorMessage(err, 'Could not disable the invite link.'));
+    }
+  };
+
   const leaveProject = async () => {
     if (!window.confirm('Leave this project? Your tasks here will become unassigned.')) return;
     try {
@@ -234,7 +268,28 @@ export default function ProjectPage() {
             <button type="submit">Add member</button>
           </form>
         )}
-        {isOwner && <p><small>Teammates must sign in to TaskHub once before you can add them.</small></p>}
+        {isOwner && <p><small>Adding by email only works for people who have signed in to TaskHub before. Otherwise, send them an invite link.</small></p>}
+
+        {isOwner && (
+          <div style={{ border: '1px solid #ddd', borderRadius: 8, padding: 12, maxWidth: 560, margin: '12px 0' }}>
+            <strong>Invite link</strong>
+            <p style={{ margin: '4px 0 8px' }}>
+              <small>Anyone with the link can join as a member for 7 days. Only share it with your team.</small>
+            </p>
+            {invite && (
+              <>
+                <input readOnly value={invite.url} onFocus={(e) => e.target.select()} style={{ width: '100%', boxSizing: 'border-box' }} />
+                <p style={{ margin: '4px 0' }}><small>Expires {new Date(invite.expiresAt).toLocaleString()}</small></p>
+              </>
+            )}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button onClick={generateInvite}>{invite ? 'Generate new link' : 'Generate invite link'}</button>
+              {invite && <button onClick={copyInvite}>Copy link</button>}
+              <button onClick={disableInvite}>Disable links</button>
+            </div>
+            {inviteMsg && <p style={{ margin: '8px 0 0' }}><small>{inviteMsg}</small></p>}
+          </div>
+        )}
         {!isOwner && <button onClick={leaveProject}>Leave project</button>}
         {memberError && <p style={{ color: 'crimson' }}>{memberError}</p>}
       </section>

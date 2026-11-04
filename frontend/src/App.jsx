@@ -5,6 +5,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Privacy from "./pages/Privacy.jsx";
 import ProjectPage from "./pages/ProjectPage";
 import MyTasks from "./pages/MyTasks";
+import InvitePage from "./pages/InvitePage";
 
 export default function App() {
   return (
@@ -32,6 +33,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <MyTasks />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/invite/:token"
+        element={
+          <ProtectedRoute>
+            <InvitePage />
           </ProtectedRoute>
         }
       />
