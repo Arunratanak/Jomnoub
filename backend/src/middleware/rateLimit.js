@@ -1,0 +1,44 @@
+import jwt from 'jsonwebtoken';
+import { rateLimit, ipKeyGenerator, MINUTE, HOUR } from 'express-rate-limit';
+
+// Limits are generous so two-account demo testing never hits them; they only
+// stop scripted abuse. Counters live in memory, so they reset when the server restarts.
+
+const tooMany = (req, res) => res.status(429).json({ error: 'Too many requests' });
+const common = { standardHeaders: 'draft-8', legacyHeaders: false, handler: tooMany };
+
+// Behind Render's proxies (and the static site's /api rewrite), req.ip may be a
+// proxy's address shared by many users. So whenever we know who the user is, we
+// count per user id instead, and only fall back to the IP for anonymous requests.
+const ipKey = (req) => `ip:${ipKeyGenerator(req.ip || '')}`;
+
+// For limiters placed after requireAuth
+const userKey = (req) => (req.user ? `user:${req.user.id}` : ipKey(req));
+
+// For the global limiter, which runs before requireAuth: identify the user from
+// their login cookie if it's valid (cheap signature check, no database call)
+function cookieUserKey(req) {
+  const token = req.cookies?.token;
+  if (typeof token === 'string' && process.env.JWT_SECRET) {
+    try {
+      const { id } = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
+      if (id) return `user:${id}`;
+    } catch {
+      // invalid or expired token: treat as anonymous
+    }
+  }
+  return ipKey(req);
+}
+
+// Everything under /api: 600 requests per 15 minutes per user (or IP)
+export const generalLimiter = rateLimit({ ...common, windowMs: 15 * MINUTE, limit: 600, keyGenerator: cookieUserKey });
+
+// Google sign-in: 30 attempts per 15 minutes per IP (no user yet at login)
+export const loginLimiter = rateLimit({ ...common, windowMs: 15 * MINUTE, limit: 30, keyGenerator: ipKey });
+
+// Creating and accepting invites share one budget: 30 per 15 minutes per user
+export const inviteLimiter = rateLimit({ ...common, windowMs: 15 * MINUTE, limit: 30, keyGenerator: userKey });
+
+// Creating content, per user
+export const createProjectLimiter = rateLimit({ ...common, windowMs: HOUR, limit: 30, keyGenerator: userKey });
+export const createTaskLimiter = rateLimit({ ...common, windowMs: HOUR, limit: 200, keyGenerator: userKey });

@@ -1,18 +1,20 @@
 import { Router } from 'express';
-import mongoose from 'mongoose';
 import { z } from 'zod';
 import Task from '../models/Task.js';
+import { logActivity, quote } from '../utils/activity.js';
+import { isObjectId, objectIdSchema } from '../utils/validate.js';
+import { createTaskLimiter } from '../middleware/rateLimit.js';
+
+const STATUS_LABELS = { todo: 'To do', 'in-progress': 'In progress', done: 'Done' };
 
 const router = Router({ mergeParams: true });
-
-const objectId = z.string().refine((v) => mongoose.isValidObjectId(v), 'Invalid id');
 
 const createSchema = z.object({
   title: z.string().trim().min(1).max(120),
   description: z.string().trim().max(1000).optional(),
   status: z.enum(['todo', 'in-progress', 'done']).optional(),
-  deadline: z.coerce.date().nullable().optional(),
-  assignee: objectId.nullable().optional(),
+  deadline: z.coerce.date().min(new Date('2000-01-01')).max(new Date('2100-12-31')).nullable().optional(),
+  assignee: objectIdSchema.nullable().optional(),
 });
 const updateSchema = createSchema.partial();
 
@@ -22,7 +24,7 @@ const populateTask = (task) => task.populate('assignee', 'name email picture');
 
 async function loadTask(req, res, next) {
   const { taskId } = req.params;
-  if (!mongoose.isValidObjectId(taskId)) return res.status(404).json({ error: 'Not found' });
+  if (!isObjectId(taskId)) return res.status(404).json({ error: 'Not found' });
   // Always scoped to the project the user is a verified member of
   const task = await Task.findOne({ _id: taskId, project: req.project._id });
   if (!task) return res.status(404).json({ error: 'Not found' });
@@ -39,7 +41,7 @@ router.get('/', async (req, res) => {
 });
 
 // Create a task
-router.post('/', async (req, res) => {
+router.post('/', createTaskLimiter, async (req, res) => {
   const data = createSchema.parse(req.body);
   if (data.assignee && !isMember(req.project, data.assignee)) {
     return res.status(400).json({ error: 'Assignee must be a member of this project' });
@@ -50,6 +52,7 @@ router.post('/', async (req, res) => {
     createdBy: req.user._id,
   });
   await populateTask(task);
+  await logActivity(req.project._id, req.user._id, `created task ${quote(task.title)}`);
   res.status(201).json({ task });
 });
 
@@ -68,9 +71,22 @@ router.patch('/:taskId', loadTask, async (req, res) => {
     return res.status(400).json({ error: 'Assignee must be a member of this project' });
   }
 
+  const oldStatus = req.task.status;
+  const oldAssignee = req.task.assignee ? String(req.task.assignee) : null;
+
   Object.assign(req.task, updates);
   await req.task.save();
   await populateTask(req.task);
+
+  const title = quote(req.task.title);
+  if (updates.status && updates.status !== oldStatus) {
+    await logActivity(req.project._id, req.user._id,
+      `moved ${title} from ${STATUS_LABELS[oldStatus]} to ${STATUS_LABELS[updates.status]}`);
+  }
+  if ('assignee' in updates && (updates.assignee || null) !== oldAssignee) {
+    await logActivity(req.project._id, req.user._id,
+      req.task.assignee ? `assigned ${title} to ${req.task.assignee.name}` : `unassigned ${title}`);
+  }
   res.json({ task: req.task });
 });
 
@@ -78,6 +94,7 @@ router.patch('/:taskId', loadTask, async (req, res) => {
 router.delete('/:taskId', loadTask, async (req, res) => {
   if (!canManage(req)) return res.status(403).json({ error: 'Not allowed' });
   await req.task.deleteOne();
+  await logActivity(req.project._id, req.user._id, `deleted task ${quote(req.task.title)}`);
   res.json({ ok: true });
 });
 

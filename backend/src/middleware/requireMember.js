@@ -1,9 +1,9 @@
-import mongoose from 'mongoose';
 import Project from '../models/Project.js';
+import { isObjectId } from '../utils/validate.js';
 
 export async function requireMember(req, res, next) {
   const { projectId } = req.params;
-  if (!mongoose.isValidObjectId(projectId)) {
+  if (!isObjectId(projectId)) {
     return res.status(404).json({ error: 'Not found' });
   }
 

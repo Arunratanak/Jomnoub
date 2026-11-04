@@ -4,6 +4,9 @@ import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import ProjectStats from '../components/ProjectStats';
 import Loading from '../components/Loading';
+import ActivityPanel from '../components/ActivityPanel';
+import NotificationBell from '../components/NotificationBell';
+import { notifyTasksChanged } from '../utils/events';
 import { isOverdue } from '../utils/dates';
 
 const STATUSES = [
@@ -30,13 +33,26 @@ export default function ProjectPage() {
   const [projectForm, setProjectForm] = useState(null); // { name, description } while editing
   const [invite, setInvite] = useState(null); // { url, expiresAt } right after generating
   const [inviteMsg, setInviteMsg] = useState('');
+  const [activity, setActivity] = useState(null);
+  const [activityError, setActivityError] = useState(false);
 
   const loadProject = async () => {
     const res = await api.get(`/projects/${id}`);
     setData(res.data);
   };
 
+  // Separate from tasks: a failed activity request must not break the task list
+  const loadActivity = () =>
+    api
+      .get(`/projects/${id}/activity`)
+      .then((res) => {
+        setActivity(res.data.activity);
+        setActivityError(false);
+      })
+      .catch(() => setActivityError(true));
+
   const loadTasks = async () => {
+    loadActivity();
     const [t, s] = await Promise.all([
       api.get(`/projects/${id}/tasks`),
       api.get(`/projects/${id}/stats`),
@@ -69,6 +85,7 @@ export default function ProjectPage() {
     try {
       if (editingId) await api.patch(`/projects/${id}/tasks/${editingId}`, body);
       else await api.post(`/projects/${id}/tasks`, body);
+      notifyTasksChanged();
       setForm(emptyForm);
       setEditingId(null);
       await loadTasks();
@@ -91,6 +108,7 @@ export default function ProjectPage() {
     try {
       setError('');
       await api.patch(`/projects/${id}/tasks/${t._id}`, { status });
+      notifyTasksChanged();
       await loadTasks();
     } catch (err) {
       setError(errorMessage(err, 'Could not update the status.'));
@@ -102,6 +120,7 @@ export default function ProjectPage() {
     try {
       setError('');
       await api.delete(`/projects/${id}/tasks/${t._id}`);
+      notifyTasksChanged();
       if (editingId === t._id) {
         setEditingId(null);
         setForm(emptyForm);
@@ -143,6 +162,7 @@ export default function ProjectPage() {
       const res = await api.post(`/projects/${id}/members`, { email: memberEmail });
       setData({ ...data, project: { ...data.project, members: res.data.members } });
       setMemberEmail('');
+      loadActivity();
     } catch (err) {
       setMemberError(errorMessage(err, 'Could not add that member.'));
     }
@@ -153,6 +173,7 @@ export default function ProjectPage() {
     setMemberError('');
     try {
       await api.delete(`/projects/${id}/members/${m.user._id}`);
+      notifyTasksChanged();
       await Promise.all([loadProject(), loadTasks()]);
     } catch (err) {
       setMemberError(errorMessage(err, 'Could not remove that member.'));
@@ -218,7 +239,10 @@ export default function ProjectPage() {
 
   return (
     <div style={{ maxWidth: 960, margin: '40px auto', padding: '0 16px' }}>
-      <Link to="/dashboard">← Back</Link>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <Link to="/dashboard">← Back</Link>
+        <NotificationBell />
+      </div>
 
       {projectForm ? (
         <form onSubmit={saveProject} style={{ display: 'grid', gap: 8, maxWidth: 480, margin: '16px 0' }}>
@@ -295,6 +319,7 @@ export default function ProjectPage() {
       </section>
 
       <ProjectStats stats={stats} />
+      <p><Link to={`/projects/${id}/timeline`}>View timeline →</Link></p>
 
       <h2>{editingId ? 'Edit task' : 'New task'}</h2>
       <form onSubmit={submit} style={{ display: 'grid', gap: 8, maxWidth: 480 }}>
@@ -344,6 +369,8 @@ export default function ProjectPage() {
           </div>
         ))}
       </div>
+
+      <ActivityPanel activity={activity} error={activityError} />
 
       {isOwner && (
         <p style={{ marginTop: 32 }}>

@@ -2,6 +2,8 @@ import { Router } from 'express';
 import Invite, { hashToken } from '../models/Invite.js';
 import Project from '../models/Project.js';
 import requireAuth from '../middleware/auth.js';
+import { logActivity } from '../utils/activity.js';
+import { inviteLimiter } from '../middleware/rateLimit.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -39,12 +41,16 @@ router.get('/:token', loadInvite, (req, res) => {
 });
 
 // Accept: join as a member (joining twice is harmless)
-router.post('/:token/accept', loadInvite, async (req, res) => {
+router.post('/:token/accept', inviteLimiter, loadInvite, async (req, res) => {
   // Atomic: only adds the user if they aren't already in members
-  await Project.updateOne(
+  const result = await Project.updateOne(
     { _id: req.project._id, 'members.user': { $ne: req.user._id } },
     { $push: { members: { user: req.user._id, role: 'member' } } }
   );
+  // Only log a real join, not a second click by an existing member
+  if (result.modifiedCount === 1) {
+    await logActivity(req.project._id, req.user._id, 'joined via invite link');
+  }
   res.json({ projectId: req.project.id });
 });
 

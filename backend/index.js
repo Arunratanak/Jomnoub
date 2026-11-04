@@ -8,6 +8,10 @@ import connectDB from './src/config/db.js';
 
 const PORT = process.env.PORT || 5000;
 
+if (!process.env.FRONTEND_URL) {
+  console.warn('FRONTEND_URL is not set: cross-origin requests (e.g. local dev on another port) will be blocked.');
+}
+
 // Reminder emails need these; the server still runs without them. Prints names only, never values.
 const missingReminderVars = ['RESEND_API_KEY', 'CRON_SECRET', 'FRONTEND_URL'].filter((k) => !process.env[k]);
 if (missingReminderVars.length) {

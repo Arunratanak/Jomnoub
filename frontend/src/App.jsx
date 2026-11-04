@@ -6,6 +6,7 @@ import Privacy from "./pages/Privacy.jsx";
 import ProjectPage from "./pages/ProjectPage";
 import MyTasks from "./pages/MyTasks";
 import InvitePage from "./pages/InvitePage";
+import TimelinePage from "./pages/TimelinePage";
 
 export default function App() {
   return (
@@ -24,6 +25,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <ProjectPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projects/:id/timeline"
+        element={
+          <ProtectedRoute>
+            <TimelinePage />
           </ProtectedRoute>
         }
       />

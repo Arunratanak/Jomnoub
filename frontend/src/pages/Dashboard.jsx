@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import Loading from '../components/Loading';
+import NotificationBell from '../components/NotificationBell';
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -36,8 +37,9 @@ export default function Dashboard() {
       setDescription('');
       await load();
     } catch (err) {
-      setError(err.response?.data?.error === 'Invalid input'
-        ? 'Could not create the project. Check the name and try again.'
+      const status = err.response?.status;
+      setError(status === 429 ? err.response.data.error
+        : status === 400 ? 'Could not create the project. Check the name and try again.'
         : 'Could not create the project. Please try again.');
     }
   };
@@ -52,7 +54,10 @@ export default function Dashboard() {
           <strong>{user.name}</strong>
           <div>{user.email}</div>
         </div>
-        <button onClick={logout} style={{ marginLeft: 'auto' }}>Log out</button>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <NotificationBell />
+          <button onClick={logout}>Log out</button>
+        </div>
       </div>
       <p><Link to="/my-tasks">My tasks →</Link></p>
 

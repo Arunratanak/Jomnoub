@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { Router } from 'express';
+import { z } from 'zod';
 import Task from '../models/Task.js';
 import ReminderLog from '../models/ReminderLog.js';
 import { sendEmail, escapeHtml } from '../utils/email.js';
@@ -60,8 +61,10 @@ function buildEmail(name, overdue, dueSoon) {
   return { subject, text, html };
 }
 
+const querySchema = z.object({ dryRun: z.enum(['true', 'false']).optional() });
+
 router.post('/reminders', requireCronSecret, async (req, res) => {
-  const dryRun = req.query.dryRun === 'true';
+  const dryRun = querySchema.parse(req.query).dryRun === 'true';
 
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);

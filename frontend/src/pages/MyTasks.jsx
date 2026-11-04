@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import api from '../api/client';
 import { isOverdue } from '../utils/dates';
 import Loading from '../components/Loading';
+import NotificationBell from '../components/NotificationBell';
+import { notifyTasksChanged } from '../utils/events';
 
 const STATUSES = [
   { value: 'todo', label: 'To do' },
@@ -31,6 +33,7 @@ export default function MyTasks() {
     try {
       setError('');
       await api.patch(`/projects/${t.project._id}/tasks/${t._id}`, { status });
+      notifyTasksChanged();
       await load();
     } catch (err) {
       setError(err.response?.data?.error || 'Could not update the task.');
@@ -41,7 +44,10 @@ export default function MyTasks() {
 
   return (
     <div style={{ maxWidth: 720, margin: '40px auto', padding: '0 16px' }}>
-      <Link to="/dashboard">← Back</Link>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <Link to="/dashboard">← Back</Link>
+        <NotificationBell />
+      </div>
       <h1>My tasks</h1>
       <label>
         <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} /> Show completed

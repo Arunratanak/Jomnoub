@@ -28,8 +28,8 @@ export default function Login() {
             try {
               setError('');
               await loginWithGoogle(res.credential);
-            } catch {
-              setError('Login failed. Please try again.');
+            } catch (err) {
+              setError(err.response?.status === 429 ? err.response.data.error : 'Login failed. Please try again.');
             }
           }}
           onError={() => setError('Google sign-in was cancelled or failed.')}

@@ -1,13 +1,16 @@
 import { Router } from 'express';
-import mongoose from 'mongoose';
 import { z } from 'zod';
 import Project from '../models/Project.js';
 import User from '../models/User.js';
 import Invite, { INVITE_TTL_MS, hashToken, newToken } from '../models/Invite.js';
 import taskRoutes from './tasks.js';
 import Task from '../models/Task.js';
+import Activity from '../models/Activity.js';
+import { logActivity } from '../utils/activity.js';
 import requireAuth from '../middleware/auth.js';
 import { requireMember, requireOwner } from '../middleware/requireMember.js';
+import { createProjectLimiter, inviteLimiter } from '../middleware/rateLimit.js';
+import { isObjectId } from '../utils/validate.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -26,7 +29,7 @@ const addMemberSchema = z.object({ email: z.string().trim().toLowerCase().pipe(z
 const memberSelect = 'name email picture';
 
 // Create a project (the creator becomes its owner)
-router.post('/', async (req, res) => {
+router.post('/', createProjectLimiter, async (req, res) => {
   const { name, description } = createSchema.parse(req.body);
   const project = await Project.create({
     name,
@@ -70,6 +73,7 @@ router.patch('/:projectId', requireMember, requireOwner, async (req, res) => {
 router.delete('/:projectId', requireMember, requireOwner, async (req, res) => {
   await Task.deleteMany({ project: req.project._id });
   await Invite.deleteMany({ project: req.project._id });
+  await Activity.deleteMany({ project: req.project._id });
   await req.project.deleteOne();
   res.json({ ok: true });
 });
@@ -87,6 +91,7 @@ router.post('/:projectId/members', requireMember, requireOwner, async (req, res)
 
   req.project.members.push({ user: user._id, role: 'member' });
   await req.project.save();
+  await logActivity(req.project._id, req.user._id, `added ${user.name} to the project`);
   await req.project.populate('members.user', memberSelect);
   res.status(201).json({ members: req.project.members });
 });
@@ -94,7 +99,7 @@ router.post('/:projectId/members', requireMember, requireOwner, async (req, res)
 // Remove a member (owner), or leave the project (any non-owner member removing themselves)
 router.delete('/:projectId/members/:userId', requireMember, async (req, res) => {
   const { userId } = req.params;
-  if (!mongoose.isValidObjectId(userId)) return res.status(404).json({ error: 'Not found' });
+  if (!isObjectId(userId)) return res.status(404).json({ error: 'Not found' });
 
   const isSelf = req.user._id.equals(userId);
   if (req.role !== 'owner' && !isSelf) return res.status(403).json({ error: 'Owners only' });
@@ -110,12 +115,30 @@ router.delete('/:projectId/members/:userId', requireMember, async (req, res) => 
   await req.project.save();
   // Keep the rule "assignees must be members": unassign their tasks in this project
   await Task.updateMany({ project: req.project._id, assignee: userId }, { assignee: null });
+
+  if (isSelf) {
+    await logActivity(req.project._id, req.user._id, 'left the project');
+  } else {
+    const removed = await User.findById(userId).select('name').lean();
+    await logActivity(req.project._id, req.user._id, `removed ${removed?.name || 'a member'} from the project`);
+  }
   res.json({ ok: true });
+});
+
+// Recent activity (any member), newest first
+router.get('/:projectId/activity', requireMember, async (req, res) => {
+  const activity = await Activity.find({ project: req.project._id })
+    .sort({ createdAt: -1 })
+    .limit(30)
+    .populate('actor', 'name')
+    .select('actor message createdAt')
+    .lean();
+  res.json({ activity });
 });
 
 // Generate an invite link (owner only). Only one link is active per project:
 // generating a new one invalidates the old one.
-router.post('/:projectId/invites', requireMember, requireOwner, async (req, res) => {
+router.post('/:projectId/invites', inviteLimiter, requireMember, requireOwner, async (req, res) => {
   const token = newToken();
   const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
   await Invite.deleteMany({ project: req.project._id });
