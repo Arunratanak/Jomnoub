@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import ProjectStats from '../components/ProjectStats';
+import { isOverdue } from '../utils/dates';
 
 const STATUSES = [
   { value: 'todo', label: 'To do' },
@@ -20,20 +22,16 @@ export default function ProjectPage() {
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState('');
+  const [stats, setStats] = useState(null);
 
-  const loadTasks = () =>
-    api.get(`/projects/${id}/tasks`).then((res) => setTasks(res.data.tasks));
-
-  useEffect(() => {
-    api
-      .get(`/projects/${id}`)
-      .then((res) => {
-        setData(res.data);
-        return loadTasks();
-      })
-      .catch(() => setNotFound(true));
-  }, [id]);
-
+const loadTasks = async () => {
+  const [t, s] = await Promise.all([
+    api.get(`/projects/${id}/tasks`),
+    api.get(`/projects/${id}/stats`),
+  ]);
+  setTasks(t.data.tasks);
+  setStats(s.data.stats);
+};
   const submit = async (e) => {
     e.preventDefault();
     setError('');
@@ -97,7 +95,7 @@ export default function ProjectPage() {
 
   const { project, role } = data;
   const canManage = (t) => role === 'owner' || t.createdBy === user._id;
-  const isOverdue = (t) => t.deadline && t.status !== 'done' && new Date(t.deadline) < new Date();
+
 
   return (
     <div style={{ maxWidth: 960, margin: '40px auto', padding: '0 16px' }}>
@@ -108,6 +106,7 @@ export default function ProjectPage() {
         <strong>Members:</strong>{' '}
         {project.members.map((m) => `${m.user.name} (${m.role})`).join(', ')}
       </p>
+      <ProjectStats stats={stats} />
 
       <h2>{editingId ? 'Edit task' : 'New task'}</h2>
       <form onSubmit={submit} style={{ display: 'grid', gap: 8, maxWidth: 480 }}>

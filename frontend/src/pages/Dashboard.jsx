@@ -46,6 +46,7 @@ export default function Dashboard() {
         </div>
         <button onClick={logout} style={{ marginLeft: 'auto' }}>Log out</button>
       </div>
+      <p><Link to="/my-tasks">My tasks →</Link></p>
 
       <h2>New project</h2>
       <form onSubmit={create} style={{ display: 'grid', gap: 8 }}>

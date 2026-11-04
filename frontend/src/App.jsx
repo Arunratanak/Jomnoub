@@ -4,6 +4,7 @@ import Dashboard from "./pages/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Privacy from "./pages/Privacy.jsx";
 import ProjectPage from "./pages/ProjectPage";
+import MyTasks from "./pages/MyTasks";
 
 export default function App() {
   return (
@@ -26,6 +27,14 @@ export default function App() {
         }
       />
       <Route path="/privacy" element={<Privacy />} />
+      <Route
+        path="/my-tasks"
+        element={
+          <ProtectedRoute>
+            <MyTasks />
+          </ProtectedRoute>
+        }
+      />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
