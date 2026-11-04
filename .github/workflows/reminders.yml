@@ -19,9 +19,31 @@ jobs:
         # Retries cover the free Render backend waking up from sleep.
         # Retrying is safe: the backend claims each reminder before sending, so nothing is sent twice.
         run: |
+          # Clean up copy-paste mistakes: surrounding whitespace/newlines and a trailing slash
+          url="$(printf '%s' "$BACKEND_URL" | tr -d '[:space:]')"
+          url="${url%/}"
+          secret="$(printf '%s' "$CRON_SECRET" | tr -d '\r\n')"
+
+          # Explain configuration problems clearly (never prints the values)
+          if [ -z "$url" ]; then
+            echo "::error::BACKEND_URL secret is missing or empty. Add it under Settings > Secrets and variables > Actions > Repository secrets."
+            exit 1
+          fi
+          case "$url" in
+            https://*) ;;
+            *) echo "::error::BACKEND_URL must start with https:// (e.g. https://your-backend.onrender.com)."; exit 1 ;;
+          esac
+          case "$url" in
+            */api|*/api/*) echo "::error::BACKEND_URL should be only the base URL, without /api."; exit 1 ;;
+          esac
+          if [ -z "$secret" ]; then
+            echo "::error::CRON_SECRET secret is missing or empty. It must match CRON_SECRET on the Render backend."
+            exit 1
+          fi
+
           curl --fail-with-body --silent --show-error \
             --retry 3 --retry-delay 20 --retry-all-errors \
             --max-time 120 \
             -X POST \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            "$BACKEND_URL/api/cron/reminders"
+            -H "Authorization: Bearer $secret" \
+            "$url/api/cron/reminders"
