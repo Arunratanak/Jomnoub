@@ -18,3 +18,13 @@ export async function listMyTasks(userId) {
     return new Date(a.deadline) - new Date(b.deadline);
   });
 }
+
+// Tasks waiting for this user's confirmation, in the projects they own
+export async function listSuggestionsForOwner(userId) {
+  const owned = await Project.find({ members: { $elemMatch: { user: userId, role: 'owner' } } }).select('_id');
+  return Task.find({ project: { $in: owned.map((p) => p._id) }, suggestedBy: { $ne: null } })
+    .sort({ suggestedAt: 1 })
+    .populate('project', 'name')
+    .populate('suggestedBy', 'name')
+    .lean();
+}

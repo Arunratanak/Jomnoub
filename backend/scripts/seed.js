@@ -15,7 +15,11 @@ import Activity from '../src/models/Activity.js';
 import Invite from '../src/models/Invite.js';
 import ReminderLog from '../src/models/ReminderLog.js';
 import { quote } from '../src/services/activityService.js';
-import { DEMO_PROJECT, DEMO_TEAMMATES as TEAMMATES, DEMO_TASKS as TASKS } from '../src/data/demoData.js';
+import Message from '../src/models/Message.js';
+import {
+  DEMO_PROJECT, DEMO_TEAMMATES as TEAMMATES, DEMO_TASKS as TASKS,
+  DEMO_SUBTASKS, DEMO_SUGGESTIONS, DEMO_MESSAGES,
+} from '../src/data/demoData.js';
 
 const args = process.argv.slice(2);
 const CLEAR = args.includes('--clear');
@@ -42,10 +46,12 @@ async function clearDemo() {
     tasks: (await Task.deleteMany({ project: { $in: demoProjectIds } })).deletedCount,
     activity: (await Activity.deleteMany({ $or: [{ project: { $in: demoProjectIds } }, { actor: { $in: demoUserIds } }] })).deletedCount,
     invites: (await Invite.deleteMany({ project: { $in: demoProjectIds } })).deletedCount,
+    messages: (await Message.deleteMany({ $or: [{ project: { $in: demoProjectIds } }, { author: { $in: demoUserIds } }] })).deletedCount,
     projects: (await Project.deleteMany({ _id: { $in: demoProjectIds } })).deletedCount,
   };
   // If demo users were added to real projects, take them out and unassign their tasks
   await Task.updateMany({ assignee: { $in: demoUserIds } }, { assignee: null });
+  await Task.updateMany({ suggestedBy: { $in: demoUserIds } }, { suggestedBy: null, suggestedAt: null });
   await Project.updateMany({ 'members.user': { $in: demoUserIds } }, { $pull: { members: { user: { $in: demoUserIds } } } });
   counts.users = (await User.deleteMany({ _id: { $in: demoUserIds } })).deletedCount;
   return counts;
@@ -81,6 +87,10 @@ async function seed() {
       assignee: assignee ? people[assignee]._id : null,
       deadline: days === null ? null : new Date(today.getTime() + days * DAY),
       createdBy: people[creator]._id,
+      subtasks: (DEMO_SUBTASKS[title] || []).map(([t, note, done]) => ({ title: t, note, done })),
+      ...(DEMO_SUGGESTIONS[title]
+        ? { suggestedBy: people[DEMO_SUGGESTIONS[title]]._id, suggestedAt: new Date(Date.now() - DAY) }
+        : {}),
     }))
   );
 
@@ -100,6 +110,16 @@ async function seed() {
     events.map((e, i) => ({ ...e, project: project._id, createdAt: new Date(start + i * step) }))
   );
 
+  const chatStart = Date.now() - 2 * DAY;
+  await Message.insertMany(
+    DEMO_MESSAGES.map(([who, text], i) => ({
+      project: project._id,
+      author: people[who]._id,
+      text,
+      createdAt: new Date(chatStart + i * 3 * 60 * 60 * 1000),
+    }))
+  );
+
   const open = tasks.filter((t) => t.status !== 'done');
   const overdue = open.filter((t) => t.deadline && t.deadline < today).length;
   const dueThisWeek = open.filter((t) => t.deadline && t.deadline >= today && t.deadline <= new Date(today.getTime() + 7 * DAY)).length;
@@ -114,6 +134,7 @@ Demo data created
   Tasks:        ${tasks.length} (${Object.entries(byStatus).map(([k, v]) => `${v} ${k}`).join(', ')})
                 ${overdue} overdue, ${dueThisWeek} due within 7 days, ${tasks.filter((t) => !t.assignee).length} unassigned
   Activity:     ${events.length} entries over the last 12 days
+  Chat:         ${DEMO_MESSAGES.length} messages, plus subtasks and 1 suggestion waiting for you
 
 Remove it any time with: npm run seed:clear`);
 }
@@ -129,7 +150,7 @@ try {
   await mongoose.connect(process.env.MONGODB_URI);
   if (CLEAR) {
     const c = await clearDemo();
-    console.log(`Demo data removed: ${c.projects} project(s), ${c.tasks} tasks, ${c.activity} activity entries, ${c.invites} invites, ${c.reminderLogs} reminder logs, ${c.users} demo users.`);
+    console.log(`Demo data removed: ${c.projects} project(s), ${c.tasks} tasks, ${c.activity} activity entries, ${c.invites} invites, ${c.messages} chat messages, ${c.reminderLogs} reminder logs, ${c.users} demo users.`);
   } else {
     await seed();
   }

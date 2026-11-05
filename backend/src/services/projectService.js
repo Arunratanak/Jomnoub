@@ -2,6 +2,7 @@ import Project from '../models/Project.js';
 import Task from '../models/Task.js';
 import Invite from '../models/Invite.js';
 import { deleteProjectActivity } from './activityService.js';
+import { deleteProjectMessages } from './messageService.js';
 import { toProjectSummary } from '../dto/projectDto.js';
 import { NotFoundError } from '../exceptions/HttpError.js';
 import { isObjectId } from '../validations/common.js';
@@ -25,7 +26,12 @@ export function createProject(user, { name, description }) {
 
 export async function listProjectsForUser(userId) {
   const projects = await Project.find({ 'members.user': userId }).sort({ updatedAt: -1 });
-  return projects.map((p) => toProjectSummary(p, userId));
+  const counts = await Task.aggregate([
+    { $match: { project: { $in: projects.map((p) => p._id) } } },
+    { $group: { _id: '$project', total: { $sum: 1 }, done: { $sum: { $cond: [{ $eq: ['$status', 'done'] }, 1, 0] } } } },
+  ]);
+  const byProject = new Map(counts.map((c) => [String(c._id), c]));
+  return projects.map((p) => toProjectSummary(p, userId, byProject.get(p.id)));
 }
 
 export const populateMembers = (project) => project.populate('members.user', MEMBER_FIELDS);
@@ -41,5 +47,6 @@ export async function deleteProject(project) {
   await Task.deleteMany({ project: project._id });
   await Invite.deleteMany({ project: project._id });
   await deleteProjectActivity(project._id);
+  await deleteProjectMessages(project._id);
   await project.deleteOne();
 }

@@ -11,4 +11,11 @@ router.post('/', createTaskLimiter, tasks.create);
 router.patch('/:taskId', loadTask, tasks.update);
 router.delete('/:taskId', loadTask, tasks.remove);
 
+router.post('/:taskId/suggestion/accept', loadTask, tasks.acceptSuggestion);
+router.post('/:taskId/suggestion/decline', loadTask, tasks.declineSuggestion);
+
+router.post('/:taskId/subtasks', loadTask, tasks.addSubtask);
+router.patch('/:taskId/subtasks/:subtaskId', loadTask, tasks.updateSubtask);
+router.delete('/:taskId/subtasks/:subtaskId', loadTask, tasks.removeSubtask);
+
 export default router;

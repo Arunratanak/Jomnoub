@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { SESSION_EXPIRED } from '../utils/feedback';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -7,11 +8,16 @@ const api = axios.create({
 
 export const RATE_LIMIT_MESSAGE = "You're doing that too often. Please wait a few minutes and try again.";
 
-// Replace the server's terse 429 text with a friendly one, so every page that
-// shows err.response.data.error displays it without extra code.
 api.interceptors.response.use(undefined, (err) => {
+  // Replace the server's terse 429 text with a friendly one, so every page that
+  // shows err.response.data.error displays it without extra code.
   if (err.response?.status === 429) {
     err.response.data = { ...(err.response.data || {}), error: RATE_LIMIT_MESSAGE };
+  }
+  // A 401 on any request except the login check means the session has ended
+  const url = err.config?.url || '';
+  if (err.response?.status === 401 && !url.startsWith('/auth/')) {
+    window.dispatchEvent(new Event(SESSION_EXPIRED));
   }
   return Promise.reject(err);
 });

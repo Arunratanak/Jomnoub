@@ -7,6 +7,9 @@ import { isObjectId } from '../validations/common.js';
 
 export const isMember = (project, userId) => project.members.some((m) => m.user.equals(userId));
 
+export const isProjectOwner = (project, userId) =>
+  project.members.some((m) => m.role === 'owner' && m.user.equals(userId));
+
 // Owner adds someone by email. They must have signed in to TaskHub once.
 export async function addMemberByEmail(project, actor, email) {
   const user = await User.findOne({ email });
@@ -21,7 +24,8 @@ export async function addMemberByEmail(project, actor, email) {
 }
 
 // Owner removes a member, or a member removes themselves (leaves).
-// The last owner can't be removed; the removed person's tasks become unassigned.
+// The last owner can't be removed; the removed person's tasks become unassigned
+// and any suggestions they made are withdrawn.
 export async function removeMember(project, actor, actorRole, userId) {
   if (!isObjectId(userId)) throw new NotFoundError();
 
@@ -39,6 +43,7 @@ export async function removeMember(project, actor, actorRole, userId) {
   await project.save();
   // Keep the rule "assignees must be members": unassign their tasks in this project
   await Task.updateMany({ project: project._id, assignee: userId }, { assignee: null });
+  await Task.updateMany({ project: project._id, suggestedBy: userId }, { suggestedBy: null, suggestedAt: null });
 
   if (isSelf) {
     await logActivity(project._id, actor._id, 'left the project');

@@ -1,82 +1,46 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import Avatar, { ProjectMark } from '../components/Avatar';
+import ChatPanel from '../components/ChatPanel';
 import Loading from '../components/Loading';
 import ActivityPanel from '../components/ActivityPanel';
 import Modal from '../components/Modal';
-import { AlertIcon, CalendarIcon, EditIcon, FolderIcon, LinkIcon, PlusIcon, TrashIcon } from '../components/Icons';
+import TaskCard from '../components/TaskCard';
+import TaskDetail from '../components/TaskDetail';
+import { CalendarIcon, FolderIcon, LinkIcon, PlusIcon, TrashIcon } from '../components/Icons';
+import { getLastRead } from '../utils/chatRead';
 import { projectGradient } from '../utils/colors';
-import useTitle from '../utils/useTitle';
-import { notifyProjectsChanged, notifyTasksChanged } from '../utils/events';
 import { isOverdue } from '../utils/dates';
+import { notifyProjectsChanged, notifyTasksChanged } from '../utils/events';
+import { confirmDialog, toast } from '../utils/feedback';
+import { STATUSES } from '../utils/taskStatus';
+import useTitle from '../utils/useTitle';
 
 // The chart library is large, so it only loads when the Progress tab is opened
 const ProjectStats = lazy(() => import('../components/ProjectStats'));
 
-const STATUSES = [
-  { value: 'todo', label: 'To do', color: 'var(--status-todo)' },
-  { value: 'in-progress', label: 'In progress', color: 'var(--status-progress)' },
-  { value: 'done', label: 'Done', color: 'var(--status-done)' },
-];
+const UNREAD_CHECK_MS = 30000;
 const emptyForm = { title: '', description: '', assignee: '', deadline: '' };
 const errorMessage = (err, fallback) => err.response?.data?.error || fallback;
-
-function TaskCard({ task: t, canManage, canChangeStatus, onStatus, onEdit, onDelete }) {
-  const overdue = isOverdue(t);
-  return (
-    <div className={`task-card${overdue ? ' overdue' : ''}`}>
-      <div className="task-title">{t.title}</div>
-      {t.description && <div className="task-desc">{t.description}</div>}
-      {t.deadline && (
-        <span className={`due${overdue ? ' overdue' : ''}`}>
-          {overdue ? <AlertIcon size={14} /> : <CalendarIcon size={14} />}
-          {overdue ? 'Overdue · was due' : 'Due'} {new Date(t.deadline).toLocaleDateString(undefined, { timeZone: 'UTC' })}
-        </span>
-      )}
-      <div className="task-people">
-        <Avatar user={t.assignee} size={24} />
-        <span>{t.assignee ? t.assignee.name : 'Unassigned'}</span>
-      </div>
-      {(canManage || canChangeStatus) && (
-        <div className="task-actions">
-          <select
-            className="select select-sm"
-            value={t.status}
-            onChange={(e) => onStatus(t, e.target.value)}
-            aria-label={`Status of ${t.title}`}
-          >
-            {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-          </select>
-          {canManage && (
-            <>
-              <button type="button" className="icon-btn icon-btn-sm" onClick={() => onEdit(t)} aria-label={`Edit ${t.title}`} title="Edit">
-                <EditIcon size={18} />
-              </button>
-              <button type="button" className="icon-btn icon-btn-sm" onClick={() => onDelete(t)} aria-label={`Delete ${t.title}`} title="Delete">
-                <TrashIcon size={18} />
-              </button>
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function ProjectPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [params, setParams] = useSearchParams();
   const [data, setData] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [stats, setStats] = useState(null);
   const [loadError, setLoadError] = useState(null); // 'notFound' | 'failed' | null
-  const [tab, setTab] = useState('board');
   const [form, setForm] = useState(emptyForm);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [initialAssignee, setInitialAssignee] = useState('');
+  const [detailId, setDetailId] = useState(null);
+  const [filter, setFilter] = useState('all');
+  const [dropColumn, setDropColumn] = useState(null);
   const [error, setError] = useState('');
   const [formError, setFormError] = useState('');
   const [memberEmail, setMemberEmail] = useState('');
@@ -87,7 +51,13 @@ export default function ProjectPage() {
   const [inviteMsg, setInviteMsg] = useState('');
   const [activity, setActivity] = useState(null);
   const [activityError, setActivityError] = useState(false);
+  const [unread, setUnread] = useState(false);
+  const draggedId = useRef(null);
+  const tab = params.get('tab') || 'board';
+  const loaded = Boolean(data);
   useTitle(data ? data.project.name : loadError === 'notFound' ? 'Project not found' : 'Project');
+
+  const setTab = (value) => setParams(value === 'board' ? {} : { tab: value }, { replace: true });
 
   const loadProject = async () => {
     const res = await api.get(`/projects/${id}`);
@@ -125,10 +95,38 @@ export default function ProjectPage() {
       .catch((err) => setLoadError(err.response?.status === 404 ? 'notFound' : 'failed'));
   }, [id]);
 
+  // Dot on the Chat tab when someone else wrote since this browser last opened the chat
+  useEffect(() => {
+    if (tab === 'chat' || !loaded) return undefined;
+    const check = () => {
+      if (document.hidden) return;
+      api
+        .get(`/projects/${id}/messages`, { params: { limit: 1 } })
+        .then((res) => {
+          const latest = res.data.messages[0];
+          setUnread(Boolean(latest && latest.author?._id !== user._id && latest._id > getLastRead(id)));
+        })
+        .catch(() => {});
+    };
+    check();
+    const timer = setInterval(check, UNREAD_CHECK_MS);
+    window.addEventListener('focus', check);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', check);
+    };
+  }, [id, tab, user._id, loaded]);
+
+  const clearUnread = useCallback(() => setUnread(false), []);
+
+  // Replaces one task in the list with the server's copy
+  const applyTask = (task) => setTasks((list) => list.map((t) => (t._id === task._id ? task : t)));
+
   // ---------- Tasks ----------
   const openNewTask = () => {
     setEditingId(null);
     setForm(emptyForm);
+    setInitialAssignee('');
     setFormError('');
     setTaskFormOpen(true);
     setTab('board');
@@ -147,13 +145,18 @@ export default function ProjectPage() {
     const body = {
       title: form.title,
       description: form.description,
-      assignee: form.assignee || null,
       deadline: form.deadline || null,
     };
+    // Only send the assignee if it changed, so editing other fields can't
+    // accidentally accept or withdraw a pending suggestion
+    if (!editingId || form.assignee !== initialAssignee) body.assignee = form.assignee || null;
     try {
-      if (editingId) await api.patch(`/projects/${id}/tasks/${editingId}`, body);
-      else await api.post(`/projects/${id}/tasks`, body);
+      const res = editingId
+        ? await api.patch(`/projects/${id}/tasks/${editingId}`, body)
+        : await api.post(`/projects/${id}/tasks`, body);
       notifyTasksChanged();
+      const suggested = res.data.task.suggestedBy && form.assignee !== initialAssignee && !isOwnerRole();
+      toast(suggested ? 'Suggested to the owner. They need to confirm it.' : editingId ? 'Task saved.' : 'Task added.');
       closeTaskForm();
       await loadTasks();
     } catch (err) {
@@ -161,12 +164,18 @@ export default function ProjectPage() {
     }
   };
 
+  const isOwnerRole = () => data?.role === 'owner';
+
   const startEdit = (t) => {
+    const ownerMember = data.project.members.find((m) => m.role === 'owner');
+    // A member sees their pending suggestion as "owner" selected; the owner sees it as unassigned
+    const current = t.suggestedBy && !isOwnerRole() ? ownerMember?.user._id || '' : t.assignee?._id || '';
     setEditingId(t._id);
+    setInitialAssignee(current);
     setForm({
       title: t.title,
       description: t.description || '',
-      assignee: t.assignee?._id || '',
+      assignee: current,
       deadline: t.deadline ? t.deadline.slice(0, 10) : '',
     });
     setFormError('');
@@ -174,26 +183,64 @@ export default function ProjectPage() {
   };
 
   const changeStatus = async (t, status) => {
+    if (t.status === status) return;
+    setError('');
+    setTasks((list) => list.map((x) => (x._id === t._id ? { ...x, status } : x))); // feels instant
     try {
-      setError('');
       await api.patch(`/projects/${id}/tasks/${t._id}`, { status });
       notifyTasksChanged();
       await loadTasks();
     } catch (err) {
       setError(errorMessage(err, 'Could not update the status.'));
+      loadTasks().catch(() => {});
     }
   };
 
   const removeTask = async (t) => {
-    if (!window.confirm(`Delete "${t.title}"?`)) return;
+    const ok = await confirmDialog({ title: 'Delete task?', message: `"${t.title}" and its subtasks will be removed.`, confirmLabel: 'Delete', danger: true });
+    if (!ok) return;
     try {
       setError('');
       await api.delete(`/projects/${id}/tasks/${t._id}`);
       notifyTasksChanged();
+      toast('Task deleted.');
       await loadTasks();
     } catch (err) {
       setError(errorMessage(err, 'Could not delete the task.'));
     }
+  };
+
+  const respondToSuggestion = async (t, action) => {
+    try {
+      setError('');
+      await api.post(`/projects/${id}/tasks/${t._id}/suggestion/${action}`);
+      notifyTasksChanged();
+      toast(action === 'accept' ? 'Task assigned to you.' : 'Suggestion declined.');
+      await loadTasks();
+    } catch (err) {
+      setError(errorMessage(err, 'Could not update the suggestion.'));
+    }
+  };
+
+  const onTaskUpdated = (task) => {
+    applyTask(task);
+    notifyTasksChanged();
+    loadActivity();
+  };
+
+  // ---------- Drag a card between columns ----------
+  const onDragStart = (e, t) => {
+    draggedId.current = t._id;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', t._id); // required by Firefox
+  };
+
+  const onDrop = (e, status) => {
+    e.preventDefault();
+    setDropColumn(null);
+    const t = tasks.find((x) => x._id === draggedId.current);
+    draggedId.current = null;
+    if (t) changeStatus(t, status);
   };
 
   // ---------- Project ----------
@@ -212,11 +259,18 @@ export default function ProjectPage() {
   };
 
   const removeProject = async () => {
-    if (!window.confirm('Delete this project and all its tasks?')) return;
+    const ok = await confirmDialog({
+      title: 'Delete this project?',
+      message: 'This removes the project, its tasks and its chat for everyone. It can\'t be undone.',
+      confirmLabel: 'Delete project',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await api.delete(`/projects/${id}`);
       notifyProjectsChanged();
       notifyTasksChanged();
+      toast('Project deleted.');
       navigate('/dashboard');
     } catch (err) {
       setSettingsMsg({ ok: false, text: errorMessage(err, 'Could not delete the project.') });
@@ -231,6 +285,7 @@ export default function ProjectPage() {
       const res = await api.post(`/projects/${id}/members`, { email: memberEmail });
       setData({ ...data, project: { ...data.project, members: res.data.members } });
       setMemberEmail('');
+      toast('Member added.');
       loadActivity();
     } catch (err) {
       setMemberError(errorMessage(err, 'Could not add that member.'));
@@ -238,11 +293,18 @@ export default function ProjectPage() {
   };
 
   const removeMember = async (m) => {
-    if (!window.confirm(`Remove ${m.user.name} from this project? Their tasks here will become unassigned.`)) return;
+    const ok = await confirmDialog({
+      title: `Remove ${m.user.name}?`,
+      message: 'Their tasks here will become unassigned, and their suggestions will be withdrawn.',
+      confirmLabel: 'Remove',
+      danger: true,
+    });
+    if (!ok) return;
     setMemberError('');
     try {
       await api.delete(`/projects/${id}/members/${m.user._id}`);
       notifyTasksChanged();
+      toast(`${m.user.name} was removed.`);
       await Promise.all([loadProject(), loadTasks()]);
     } catch (err) {
       setMemberError(errorMessage(err, 'Could not remove that member.'));
@@ -251,7 +313,10 @@ export default function ProjectPage() {
 
   // ---------- Invite links ----------
   const generateInvite = async () => {
-    if (invite && !window.confirm('Generate a new link? The current link will stop working.')) return;
+    if (invite) {
+      const ok = await confirmDialog({ title: 'Generate a new link?', message: 'The current link will stop working.', confirmLabel: 'Generate' });
+      if (!ok) return;
+    }
     setInviteMsg('');
     try {
       const res = await api.post(`/projects/${id}/invites`);
@@ -264,14 +329,15 @@ export default function ProjectPage() {
   const copyInvite = async () => {
     try {
       await navigator.clipboard.writeText(invite.url);
-      setInviteMsg('Link copied.');
+      toast('Link copied.');
     } catch {
       setInviteMsg('Copy failed. Select the link and copy it manually.');
     }
   };
 
   const disableInvite = async () => {
-    if (!window.confirm('Disable invite links for this project? Anyone with an old link won\'t be able to join.')) return;
+    const ok = await confirmDialog({ title: 'Disable invite links?', message: 'Anyone with an old link won\'t be able to join.', confirmLabel: 'Disable', danger: true });
+    if (!ok) return;
     try {
       await api.delete(`/projects/${id}/invites`);
       setInvite(null);
@@ -282,7 +348,8 @@ export default function ProjectPage() {
   };
 
   const leaveProject = async () => {
-    if (!window.confirm('Leave this project? Your tasks here will become unassigned.')) return;
+    const ok = await confirmDialog({ title: 'Leave this project?', message: 'Your tasks here will become unassigned.', confirmLabel: 'Leave', danger: true });
+    if (!ok) return;
     try {
       await api.delete(`/projects/${id}/members/${user._id}`);
       notifyProjectsChanged();
@@ -308,21 +375,39 @@ export default function ProjectPage() {
   const { project, role } = data;
   const isOwner = role === 'owner';
   const canManage = (t) => isOwner || t.createdBy === user._id;
+  const isAssignee = (t) => t.assignee?._id === user._id;
   const settings = projectForm || { name: project.name, description: project.description || '' };
+  const ownerMember = project.members.find((m) => m.role === 'owner');
+  const membersSorted = [...project.members].sort((a, b) => (a.role === b.role ? 0 : a.role === 'owner' ? -1 : 1));
+  const pendingSuggestions = tasks.filter((t) => t.suggestedBy);
+  const detailTask = tasks.find((t) => t._id === detailId);
+  const assigningToOwner = !isOwner && ownerMember && form.assignee === ownerMember.user._id;
 
   const TABS = [
     { value: 'board', label: 'Board' },
+    { value: 'chat', label: 'Chat', dot: unread },
     { value: 'progress', label: 'Progress' },
     { value: 'members', label: `Members (${project.members.length})` },
     { value: 'activity', label: 'Activity' },
     ...(isOwner ? [{ value: 'settings', label: 'Settings' }] : []),
   ];
 
+  const FILTERS = [
+    { value: 'all', label: 'All', test: () => true },
+    { value: 'mine', label: 'Assigned to me', test: isAssignee },
+    { value: 'overdue', label: 'Overdue', test: isOverdue },
+    { value: 'unassigned', label: 'Unassigned', test: (t) => !t.assignee },
+    ...(pendingSuggestions.length ? [{ value: 'suggested', label: `Suggestions (${pendingSuggestions.length})`, test: (t) => t.suggestedBy }] : []),
+  ];
+  const activeFilter = FILTERS.find((f) => f.value === filter) || FILTERS[0];
+  const visibleTasks = tasks.filter(activeFilter.test);
+
   return (
     <>
-      <div className="banner" style={{ background: projectGradient(project._id) }} />
+      <div className={`banner${tab === 'chat' ? ' hide-on-phone' : ''}`} style={{ background: projectGradient(project._id) }} />
+      {tab === 'chat' && <h1 className="phone-only chat-title">{project.name}</h1>}
 
-      <div className="channel-head">
+      <div className={`channel-head${tab === 'chat' ? ' hide-on-phone' : ''}`}>
         <ProjectMark id={project._id} name={project.name} size={72} radius={36} />
         <div className="channel-info">
           <h1>{project.name}</h1>
@@ -348,6 +433,7 @@ export default function ProjectPage() {
             onClick={() => setTab(t.value)}
           >
             {t.label}
+            {t.dot && <span className="tab-dot"><span className="sr-only"> (new messages)</span></span>}
           </button>
         ))}
       </div>
@@ -355,32 +441,70 @@ export default function ProjectPage() {
       {error && <p className="alert" style={{ marginBottom: 16 }}>{error}</p>}
 
       {tab === 'board' && (
-        <div className="board">
-          {STATUSES.map((col) => {
-            const items = tasks.filter((t) => t.status === col.value);
-            return (
-              <div key={col.value} className="column">
-                <div className="column-head">
-                  <span className="dot" style={{ background: col.color }} aria-hidden="true" />
-                  {col.label} <span className="muted" style={{ fontWeight: 400 }}>({items.length})</span>
+        <>
+          {isOwner && pendingSuggestions.length > 0 && filter !== 'suggested' && (
+            <div className="notice notice-row">
+              <span>
+                <strong>{pendingSuggestions.length}</strong> task{pendingSuggestions.length === 1 ? ' was' : 's were'} suggested for you and {pendingSuggestions.length === 1 ? 'needs' : 'need'} your confirmation.
+              </span>
+              <button type="button" className="btn btn-sm" onClick={() => setFilter('suggested')}>Review</button>
+            </div>
+          )}
+
+          <div className="chips" role="group" aria-label="Filter tasks">
+            {FILTERS.map((f) => (
+              <button
+                key={f.value}
+                type="button"
+                className={`chip${activeFilter.value === f.value ? ' active' : ''}`}
+                aria-pressed={activeFilter.value === f.value}
+                onClick={() => setFilter(f.value)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="board">
+            {STATUSES.map((col) => {
+              const items = visibleTasks.filter((t) => t.status === col.value);
+              return (
+                <div
+                  key={col.value}
+                  className={`column${dropColumn === col.value ? ' drop' : ''}`}
+                  onDragOver={(e) => { e.preventDefault(); setDropColumn(col.value); }}
+                  onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropColumn(null); }}
+                  onDrop={(e) => onDrop(e, col.value)}
+                >
+                  <div className="column-head">
+                    <span className="dot" style={{ background: col.color }} aria-hidden="true" />
+                    {col.label} <span className="muted" style={{ fontWeight: 400 }}>({items.length})</span>
+                  </div>
+                  {items.length === 0 && <p className="column-empty">{filter === 'all' ? 'No tasks here.' : 'No matching tasks.'}</p>}
+                  {items.map((t) => (
+                    <TaskCard
+                      key={t._id}
+                      task={t}
+                      isOwner={isOwner}
+                      canManage={canManage(t)}
+                      canChangeStatus={isAssignee(t)}
+                      draggable={canManage(t) || isAssignee(t)}
+                      onOpen={(task) => setDetailId(task._id)}
+                      onStatus={changeStatus}
+                      onEdit={startEdit}
+                      onDelete={removeTask}
+                      onSuggestion={respondToSuggestion}
+                      onDragStart={onDragStart}
+                    />
+                  ))}
                 </div>
-                {items.length === 0 && <p className="column-empty">No tasks here.</p>}
-                {items.map((t) => (
-                  <TaskCard
-                    key={t._id}
-                    task={t}
-                    canManage={canManage(t)}
-                    canChangeStatus={t.assignee?._id === user._id}
-                    onStatus={changeStatus}
-                    onEdit={startEdit}
-                    onDelete={removeTask}
-                  />
-                ))}
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </>
       )}
+
+      {tab === 'chat' && <ChatPanel projectId={id} user={user} isOwner={isOwner} onSeen={clearUnread} />}
 
       {tab === 'progress' && (
         <Suspense fallback={<Loading />}>
@@ -393,13 +517,17 @@ export default function ProjectPage() {
           <div className="card">
             <h2 style={{ marginBottom: 8 }}>Members</h2>
             <ul>
-              {project.members.map((m) => (
+              {membersSorted.map((m) => (
                 <li key={m.user._id} className="row">
                   <Avatar user={m.user} size={40} />
                   <div className="row-main">
-                    <div><strong>{m.user.name}</strong></div>
-                    <small className="muted">{m.user.email} · {m.role}</small>
+                    <div>
+                      <strong>{m.user.name}</strong>
+                      {m.user._id === user._id && <span className="muted"> (you)</span>}
+                    </div>
+                    <small className="muted">{m.user.email}</small>
                   </div>
+                  <span className={`role-badge${m.role === 'owner' ? ' owner' : ''}`}>{m.role === 'owner' ? 'Owner' : 'Member'}</span>
                   {isOwner && m.role !== 'owner' && (
                     <button type="button" className="btn btn-sm" onClick={() => removeMember(m)}>Remove</button>
                   )}
@@ -483,10 +611,20 @@ export default function ProjectPage() {
           </form>
           <div className="card">
             <h2 style={{ marginBottom: 4 }}>Delete project</h2>
-            <p className="muted" style={{ marginBottom: 12 }}>This removes the project and all its tasks for everyone. It can't be undone.</p>
+            <p className="muted" style={{ marginBottom: 12 }}>This removes the project, its tasks and its chat for everyone. It can't be undone.</p>
             <button type="button" className="btn btn-danger" onClick={removeProject}><TrashIcon size={18} /> Delete project</button>
           </div>
         </div>
+      )}
+
+      {detailTask && (
+        <TaskDetail
+          projectId={id}
+          task={detailTask}
+          canEditSubtasks={canManage(detailTask) || isAssignee(detailTask)}
+          onUpdated={onTaskUpdated}
+          onClose={() => setDetailId(null)}
+        />
       )}
 
       {taskFormOpen && (
@@ -504,10 +642,15 @@ export default function ProjectPage() {
               <span>Assignee</span>
               <select className="select" value={form.assignee} onChange={(e) => setForm({ ...form, assignee: e.target.value })}>
                 <option value="">Unassigned</option>
-                {project.members.map((m) => (
-                  <option key={m.user._id} value={m.user._id}>{m.user.name}</option>
+                {membersSorted.map((m) => (
+                  <option key={m.user._id} value={m.user._id}>
+                    {m.user.name}{m.role === 'owner' && !isOwner ? ' (owner, as a suggestion)' : ''}
+                  </option>
                 ))}
               </select>
+              {assigningToOwner && (
+                <small className="muted">You can't assign work to the owner directly. They'll get a suggestion to accept or decline.</small>
+              )}
             </label>
             <label className="field">
               <span>Deadline</span>
@@ -516,7 +659,7 @@ export default function ProjectPage() {
             {formError && <p className="alert">{formError}</p>}
             <div className="form-actions">
               <button type="button" className="btn" onClick={closeTaskForm}>Cancel</button>
-              <button type="submit" className="btn btn-primary">{editingId ? 'Save changes' : 'Add task'}</button>
+              <button type="submit" className="btn btn-primary">{editingId ? 'Save changes' : assigningToOwner ? 'Add and suggest' : 'Add task'}</button>
             </div>
           </form>
         </Modal>

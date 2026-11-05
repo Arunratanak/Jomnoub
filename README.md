@@ -17,20 +17,26 @@ Built as a full-stack course final project.
 **Tasks**
 - Title, description, status (To do / In progress / Done), deadline and assignee. The assignee must be a project member.
 - The owner or the task's creator can edit and delete a task; its assignee can change only its status.
-- Board view with three status columns; overdue tasks are highlighted.
+- **Suggestions:** members can't assign work to the owner. Choosing the owner creates a suggestion, and the task stays unassigned until the owner accepts or declines it (on the board, in My Tasks, or from the bell).
+- **Subtasks:** each task can have up to 50 subtasks with notes and a done checkbox. The owner, the task's creator and its assignee can change them; other members can read them.
+- Board view with three status columns, filters (assigned to me, overdue, unassigned, suggestions) and drag and drop; overdue tasks are highlighted.
+
+**Chat**
+- Each project has a chat room for its members. Messages appear within about 5 seconds, with an unread dot on the tab. Authors can delete their own messages, and the owner can delete any.
 
 **Tracking**
 - **Progress stats** per project: completion %, counts by status, overdue, due this week, and a workload chart per member (Recharts).
 - **Timeline** (`/projects/:id/timeline`): tasks grouped as Overdue, then by deadline date, then No deadline.
 - **Activity log**: the last 30 events in a project (task created, moved, assigned, deleted; member joined, added, removed, left).
 - **My Tasks**: everything assigned to you across projects, soonest deadline first.
-- **Notification bell**: count of your unfinished tasks that are overdue or due within 2 days. It refreshes when the page loads, when the window regains focus, and after you change a task. No polling.
+- **Notification bell**: count of your unfinished tasks that are overdue or due within 2 days, plus suggestions waiting for you. It refreshes when the page loads, when the window regains focus, and after you change a task. No polling.
 
 **Email reminders**
 - Once a day, a GitHub Actions workflow calls the backend, which emails each person one summary of their unfinished tasks that are overdue or due within 2 days (via Resend). The same reminder is never sent twice.
 
 **Interface**
-- App frame with a top bar, project search, a collapsible sidebar (a drawer plus bottom navigation on phones), and project pages with Board, Progress, Members, Activity and Settings tabs.
+- App frame with a top bar, project search, a collapsible sidebar (a drawer plus bottom navigation on phones), and project pages with Board, Chat, Progress, Members, Activity and Settings tabs. The open tab is kept in the URL, so refreshing stays on it.
+- Toast messages and styled confirm dialogs. If a session expires, you're sent to sign in and then back to the same page.
 - Green theme with a light/dark toggle. It starts from the device's preference and remembers your choice in this browser.
 
 **Demo data**
@@ -92,7 +98,7 @@ backend/
     validations/         zod schemas for every request body/query, ObjectId check
     dto/                 response shapes (project list item, invite preview)
     exceptions/          HttpError classes (NotFound, Forbidden, ...) turned into JSON by errorHandler
-    models/              Mongoose models: User, Project, Task, Invite, Activity, ReminderLog
+    models/              Mongoose models: User, Project, Task, Message, Invite, Activity, ReminderLog
     data/                demo content used by the seed script
 
 Request flow: route -> middlewares (auth, membership, rate limit) -> controller
@@ -104,10 +110,12 @@ frontend/
   src/pages/             Login, Dashboard, ProjectPage, TimelinePage, MyTasks, InvitePage, Privacy
   src/App.css            design tokens (light/dark colors) and all shared styles
   src/components/        Layout (top bar, sidebar), ProtectedRoute, ProjectStats, ActivityPanel,
-                         NotificationBell, ThemeToggle, Modal, Avatar, Logo, Icons, Loading
+                         ChatPanel, TaskCard, TaskDetail, NotificationBell, ThemeToggle, Modal,
+                         FeedbackHost (toasts, confirm dialog), Avatar, Logo, Icons, Loading
   src/context/           AuthContext (current user)
   src/api/client.js      axios instance (cookies on, friendly 429 message)
-  src/utils/             dates, timeline, events, theme, colors, useTitle, useClickOutside
+  src/utils/             dates, timeline, taskStatus, events, feedback, chatRead, theme, colors,
+                         useTitle, useClickOutside
 .github/workflows/reminders.yml   daily reminder job
 docs/                    SECURITY.md, TEST_PLAN.md, PRESENTATION.md
 ```
@@ -128,6 +136,9 @@ All routes are under `/api`. Everything requires login except `GET /status`, `PO
 | `DELETE /projects/:projectId/members/:userId` | owner (remove), or the member themselves (leave) |
 | `POST`, `DELETE /projects/:projectId/invites` | owner (generate / disable link) |
 | `GET`, `POST /projects/:projectId/tasks`, `PATCH`, `DELETE .../tasks/:taskId` | members (edit/delete: owner or creator; status: also assignee) |
+| `POST .../tasks/:taskId/suggestion/accept`, `/decline` | owner |
+| `POST .../tasks/:taskId/subtasks`, `PATCH`, `DELETE .../subtasks/:subtaskId` | owner, the task's creator, or its assignee |
+| `GET`, `POST /projects/:projectId/messages`, `DELETE .../messages/:messageId` | members (delete: author or owner) |
 | `GET /invites/:token`, `POST /invites/:token/accept` | any logged-in user with a valid link |
 | `GET /my-tasks` | your assigned tasks |
 | `POST /cron/reminders[?dryRun=true]` | GitHub Actions (CRON_SECRET) |
@@ -209,6 +220,8 @@ Vite builds these into the public JavaScript, so they must never contain secrets
 - **Push notifications are not implemented.** The bell is in-app only and updates on page load, window focus and after your own changes; there is no real-time push (no WebSockets, no browser push).
 - **No automated test suite in the repository.** The features were tested with scripts run outside the repo and with the manual plan in [docs/TEST_PLAN.md](docs/TEST_PLAN.md).
 - **Roles.** A project has exactly one owner; there is no way to promote a member or transfer ownership.
+- **Chat isn't instant.** It checks for new messages every 5 seconds while open (no WebSockets), has no file attachments, and tracks "unread" per browser, not per account.
+- **Suggestions aren't emailed.** The owner sees them in the app only.
 - **Sessions.** Logging out clears the cookie, but an already-issued token stays valid until it expires (7 days); there is no server-side session revocation.
 - **Rate limits are in memory.** They reset when the backend restarts or sleeps, and would not be shared across multiple server instances.
 - **Reminders** are daily only, and a crash between claiming and sending a reminder can lose that one reminder (it is never sent twice).

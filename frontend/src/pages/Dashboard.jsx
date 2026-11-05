@@ -8,6 +8,7 @@ import { FolderIcon, PlusIcon, SearchIcon } from '../components/Icons';
 import { projectGradient } from '../utils/colors';
 import { timeAgo } from '../utils/dates';
 import { notifyProjectsChanged } from '../utils/events';
+import { toast } from '../utils/feedback';
 import useTitle from '../utils/useTitle';
 
 const FILTERS = [
@@ -28,6 +29,12 @@ function ProjectCard({ project: p }) {
         <div style={{ minWidth: 0 }}>
           <div className="project-meta">{p.role === 'owner' ? 'Owner' : 'Member'} · updated {timeAgo(p.updatedAt)}</div>
           {p.description && <div className="project-desc">{p.description}</div>}
+          {p.taskCount > 0 && (
+            <div className="card-progress">
+              <span className="progress-track mini"><span className="progress-fill" style={{ width: `${(p.doneCount / p.taskCount) * 100}%` }} /></span>
+              <small className="muted">{p.doneCount}/{p.taskCount} tasks done</small>
+            </div>
+          )}
         </div>
       </div>
     </Link>
@@ -90,6 +97,7 @@ export default function Dashboard() {
       setDescription('');
       setCreating(false);
       notifyProjectsChanged();
+      toast('Project created.');
       await load();
     } catch (err) {
       const status = err.response?.status;

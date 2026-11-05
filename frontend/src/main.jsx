@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './context/AuthContext.jsx';
 import App from './App';
+import FeedbackHost from './components/FeedbackHost';
 import './App.css';
 
 createRoot(document.getElementById('root')).render(
@@ -12,6 +13,7 @@ createRoot(document.getElementById('root')).render(
       <BrowserRouter>
         <AuthProvider>
           <App />
+          <FeedbackHost />
         </AuthProvider>
       </BrowserRouter>
     </GoogleOAuthProvider>

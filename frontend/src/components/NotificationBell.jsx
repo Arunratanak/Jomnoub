@@ -18,6 +18,7 @@ function dueText(t) {
 // window focus, and when a page reports a task change. No polling.
 export default function NotificationBell() {
   const [tasks, setTasks] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
   const [error, setError] = useState(false);
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -32,6 +33,7 @@ export default function NotificationBell() {
         .then((res) => {
           if (!active) return;
           setTasks(res.data.tasks.filter(needsAttention));
+          setSuggestions(res.data.suggestions || []);
           setError(false);
         })
         .catch(() => active && setError(true));
@@ -46,7 +48,7 @@ export default function NotificationBell() {
     };
   }, []);
 
-  const count = tasks?.length || 0;
+  const count = (tasks?.length || 0) + suggestions.length;
   const label = error
     ? 'Notifications: could not load'
     : `Notifications: ${count} task${count === 1 ? '' : 's'} need${count === 1 ? 's' : ''} attention`;
@@ -78,7 +80,15 @@ export default function NotificationBell() {
             <p className="menu-section muted">Nothing overdue or due in the next 2 days.</p>
           ) : (
             <ul>
-              {tasks.slice(0, MAX_ITEMS).map((t) => (
+              {suggestions.slice(0, MAX_ITEMS).map((t) => (
+                <li key={t._id}>
+                  <Link className="notif" to={`/projects/${t.project._id}`} onClick={close}>
+                    <span className="notif-title">{t.title}</span>
+                    <small style={{ color: 'var(--accent-text)' }}>{t.suggestedBy?.name} suggested this for you · {t.project.name}</small>
+                  </Link>
+                </li>
+              ))}
+              {tasks.slice(0, Math.max(0, MAX_ITEMS - suggestions.length)).map((t) => (
                 <li key={t._id}>
                   <Link className="notif" to={`/projects/${t.project._id}`} onClick={close}>
                     <span className="notif-title">{t.title}</span>

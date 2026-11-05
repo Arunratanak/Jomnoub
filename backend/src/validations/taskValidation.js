@@ -12,3 +12,14 @@ export const createTaskSchema = z.object({
 });
 
 export const updateTaskSchema = createTaskSchema.partial();
+
+export const createSubtaskSchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  note: z.string().trim().max(1000).optional(),
+});
+
+export const updateSubtaskSchema = z.object({
+  title: z.string().trim().min(1).max(200).optional(),
+  note: z.string().trim().max(1000).optional(),
+  done: z.boolean().optional(),
+});

@@ -3,6 +3,7 @@ import requireAuth from '../middlewares/auth.js';
 import { requireMember, requireOwner } from '../middlewares/requireMember.js';
 import { createProjectLimiter, inviteLimiter } from '../middlewares/rateLimit.js';
 import taskRoutes from './taskRoutes.js';
+import messageRoutes from './messageRoutes.js';
 import * as projects from '../controllers/projectController.js';
 import * as members from '../controllers/memberController.js';
 import * as invites from '../controllers/inviteController.js';
@@ -12,6 +13,7 @@ import * as invites from '../controllers/inviteController.js';
 const router = Router();
 router.use(requireAuth);
 router.use('/:projectId/tasks', requireMember, taskRoutes);
+router.use('/:projectId/messages', requireMember, messageRoutes);
 
 router.post('/', createProjectLimiter, projects.create);
 router.get('/', projects.list);

@@ -23,6 +23,9 @@ Each row lists what the measure does, where it is implemented, and how to show i
 | Task permissions: owner or creator can edit/delete; the assignee can only change status | `taskService.js` (`canManageTask`, `updateTask`, `deleteTask`) | As account B, a task created by A and assigned to B shows only the status dropdown. |
 | Assignee must be a project member, on create and on update | `taskService.js` (`createTask`, `updateTask`), `memberService.js` (`isMember`) | API call with a non-member's id as `assignee`: **400 Assignee must be a member of this project**. |
 | Removing a member (or leaving) unassigns their tasks; the last owner can't be removed or leave | `backend/src/services/memberService.js` (`removeMember`) | Remove account B: their tasks show "Unassigned", and B's My Tasks no longer lists them. |
+| Members can't assign work to the owner: the server turns it into a suggestion that only the owner can accept or decline | `backend/src/services/taskService.js` (`isSuggestionForOwner`, `acceptSuggestion`, `declineSuggestion`) | As B, assign a task to the owner: it stays Unassigned. Calling `POST .../suggestion/accept` as B returns **403 Owners only**. |
+| Subtasks can be changed only by the owner, the task's creator or its assignee | `taskService.js` (`canEditSubtasks`) | As an unrelated member, the checkboxes are disabled. Calling the API directly returns **403 Not allowed**. |
+| Chat is members only; authors can delete their own messages and the owner can delete any | `backend/src/routes/projectRoutes.js` (`requireMember`), `backend/src/services/messageService.js` | Open `/api/projects/<id>/messages` as a non-member: **404 Not found**. A script in a message shows as text. |
 | My Tasks only includes projects you are still a member of | `backend/src/services/myTaskService.js` | After B leaves, B's My Tasks and bell no longer show that project's tasks. |
 
 ## Invite links
@@ -50,7 +53,7 @@ Each row lists what the measure does, where it is implemented, and how to show i
 
 | Measure | Where | How to demonstrate |
 |---|---|---|
-| Rate limits returning **429 `{ "error": "Too many requests" }`**: all `/api` 600 per 15 min; Google sign-in 30 per 15 min per IP; invite create+accept 30 per 15 min; project creation 30 per hour; task creation 200 per hour | `backend/src/middlewares/rateLimit.js`, applied in `app.js` and the route files | PowerShell loop in [TEST_PLAN.md](TEST_PLAN.md) (test 9): the 31st sign-in attempt returns 429. The app shows "You're doing that too often...". |
+| Rate limits returning **429 `{ "error": "Too many requests" }`**: all `/api` 600 per 15 min; Google sign-in 30 per 15 min per IP; invite create+accept 30 per 15 min; project creation 30 per hour; task creation 200 per hour; chat messages 40 per minute | `backend/src/middlewares/rateLimit.js`, applied in `app.js` and the route files | PowerShell loop in [TEST_PLAN.md](TEST_PLAN.md) (test 9): the 31st sign-in attempt returns 429. The app shows "You're doing that too often...". |
 | Limits are counted per **user id** when the user is known, so users behind the same proxy (Render's rewrite) don't throttle each other | `rateLimit.js` (`userKey`, `cookieUserKey`) | Code walkthrough. |
 | Cron route protected by `CRON_SECRET` with a constant-time comparison; rejects everything if the secret isn't set; doesn't use user login | `backend/src/middlewares/requireCronSecret.js` | `POST /api/cron/reminders` without the header: **401 Unauthorized**. |
 | Security headers via helmet (e.g. `X-Content-Type-Options`, `Strict-Transport-Security`, no `X-Powered-By`) | `app.js` | DevTools > Network > any `/api` response > Headers. |

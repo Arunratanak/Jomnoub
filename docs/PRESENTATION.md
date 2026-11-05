@@ -50,6 +50,8 @@
    - B (private window): paste, sign in, **Join project**.
    - A: refresh, B appears in Members and in Activity ("joined via invite link").
 6. **Permissions:** as B, show that there is no Settings tab or invite panel, and that B can only change the status of a task assigned to them.
+   - As B, assign a task to the owner: it becomes a **suggestion**. As A, click **Accept**.
+   - Open a task and tick a **subtask**. Send a **chat** message from B and show it arrive in A's window.
 7. **My Tasks** as A: all assigned tasks across projects, soonest first.
 8. **Reminder email:** show the email in your inbox (or the GitHub Actions run with `"emails":1`). "This runs every morning; a log table guarantees nobody gets the same reminder twice."
 
@@ -80,7 +82,8 @@
 | How do reminders avoid double emails? | Before sending, the job inserts a log row with a unique index on task, type and deadline. If the insert fails as a duplicate, it skips; if the send fails, it deletes the row so the next run retries. |
 | Why GitHub Actions instead of a timer in the server? | The free Render server sleeps, so an in-process timer wouldn't run. GitHub calls the endpoint once a day and retries while the server wakes up. |
 | Why the `/api` rewrite? | It makes the API same-origin with the frontend: no CORS problems with cookies, and the cookie can use SameSite=Lax. |
-| Is it real-time? | No. Pages refresh on load, window focus and after your own actions. Real-time would need WebSockets or push notifications, which are next steps. |
+| Is it real-time? | Nearly, for chat: it checks for new messages every 5 seconds while open. Other pages refresh on load, window focus and after your own actions. True real-time would need WebSockets, which is a next step. |
+| What stops a member assigning work to the owner through the API? | The rule is on the server. It turns the request into a suggestion whichever way it's sent, and only the owner can accept it. |
 | Did you write tests? | The features were tested with end-to-end scripts against an in-memory MongoDB plus a written two-account test plan. The scripts aren't in the repo yet; adding them as `npm test` is a next step. |
 | What would you improve? | Automated tests in CI, real-time updates, multiple owners and role changes, a verified email domain, and server-side session revocation. |
 | Did anything go wrong? | Yes: an early commit included the `.env` file. I removed it from history and rotated the secrets. Lesson: add `.gitignore` before the first commit. |

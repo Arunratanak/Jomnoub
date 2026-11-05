@@ -1,17 +1,25 @@
 import Task from '../models/Task.js';
 import { logActivity, quote } from './activityService.js';
-import { isMember } from './memberService.js';
-import { BadRequestError, ForbiddenError, NotFoundError } from '../exceptions/HttpError.js';
+import { isMember, isProjectOwner } from './memberService.js';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../exceptions/HttpError.js';
 import { isObjectId } from '../validations/common.js';
 
 const STATUS_LABELS = { todo: 'To do', 'in-progress': 'In progress', done: 'Done' };
 const ASSIGNEE_FIELDS = 'name email picture';
 const NOT_A_MEMBER = 'Assignee must be a member of this project';
+const MAX_SUBTASKS = 50;
 
-const populateTask = (task) => task.populate('assignee', ASSIGNEE_FIELDS);
+const populateTask = (task) =>
+  task.populate([
+    { path: 'assignee', select: ASSIGNEE_FIELDS },
+    { path: 'suggestedBy', select: 'name' },
+  ]);
 
 // Owner of the project, or whoever created the task
 export const canManageTask = (role, task, userId) => role === 'owner' || task.createdBy.equals(userId);
+
+// Managers and the task's assignee can work on its subtasks
+const canEditSubtasks = (role, task, userId) => canManageTask(role, task, userId) || task.assignee?.equals(userId);
 
 // Always scoped to the project the user is a verified member of
 export async function findTaskInProject(project, taskId) {
@@ -24,14 +32,28 @@ export async function findTaskInProject(project, taskId) {
 export function listTasks(project) {
   return Task.find({ project: project._id })
     .sort({ deadline: 1, createdAt: -1 })
-    .populate('assignee', ASSIGNEE_FIELDS);
+    .populate('assignee', ASSIGNEE_FIELDS)
+    .populate('suggestedBy', 'name');
 }
 
-export async function createTask(project, user, data) {
+// Only the owner can give work to the owner; a member's request becomes a suggestion
+const isSuggestionForOwner = (project, role, assignee) =>
+  Boolean(assignee) && role !== 'owner' && isProjectOwner(project, assignee);
+
+export async function createTask({ project, role, user }, data) {
   if (data.assignee && !isMember(project, data.assignee)) throw new BadRequestError(NOT_A_MEMBER);
-  const task = await Task.create({ ...data, project: project._id, createdBy: user._id });
+
+  const suggest = isSuggestionForOwner(project, role, data.assignee);
+  const task = await Task.create({
+    ...data,
+    ...(suggest ? { assignee: null, suggestedBy: user._id, suggestedAt: new Date() } : {}),
+    project: project._id,
+    createdBy: user._id,
+  });
   await populateTask(task);
+
   await logActivity(project._id, user._id, `created task ${quote(task.title)}`);
+  if (suggest) await logActivity(project._id, user._id, `suggested ${quote(task.title)} for the owner`);
   return task;
 }
 
@@ -47,8 +69,28 @@ export async function updateTask({ project, role, user, task }, updates) {
 
   const oldStatus = task.status;
   const oldAssignee = task.assignee ? String(task.assignee) : null;
+  const fields = { ...updates };
+  let newlySuggested = false;
 
-  Object.assign(task, updates);
+  if ('assignee' in updates) {
+    const target = updates.assignee ? updates.assignee.toLowerCase() : null;
+    if (target !== oldAssignee && isSuggestionForOwner(project, role, target)) {
+      // A member picked the owner: the task waits for the owner's confirmation
+      newlySuggested = !task.suggestedBy;
+      fields.assignee = null;
+      if (newlySuggested) {
+        task.suggestedBy = user._id;
+        task.suggestedAt = new Date();
+      }
+    } else {
+      // Any other assignee choice replaces a pending suggestion
+      fields.assignee = target;
+      task.suggestedBy = null;
+      task.suggestedAt = null;
+    }
+  }
+
+  Object.assign(task, fields);
   await task.save();
   await populateTask(task);
 
@@ -57,10 +99,11 @@ export async function updateTask({ project, role, user, task }, updates) {
     await logActivity(project._id, user._id,
       `moved ${title} from ${STATUS_LABELS[oldStatus]} to ${STATUS_LABELS[updates.status]}`);
   }
-  if ('assignee' in updates && (updates.assignee || null) !== oldAssignee) {
+  if ('assignee' in fields && (fields.assignee || null) !== oldAssignee) {
     await logActivity(project._id, user._id,
       task.assignee ? `assigned ${title} to ${task.assignee.name}` : `unassigned ${title}`);
   }
+  if (newlySuggested) await logActivity(project._id, user._id, `suggested ${title} for the owner`);
   return task;
 }
 
@@ -68,4 +111,69 @@ export async function deleteTask({ project, role, user, task }) {
   if (!canManageTask(role, task, user._id)) throw new ForbiddenError('Not allowed');
   await task.deleteOne();
   await logActivity(project._id, user._id, `deleted task ${quote(task.title)}`);
+}
+
+// ---------- Suggestions for the owner ----------
+function requirePendingSuggestion(role, task) {
+  if (role !== 'owner') throw new ForbiddenError('Owners only');
+  if (!task.suggestedBy) throw new ConflictError('This task has no pending suggestion');
+}
+
+export async function acceptSuggestion({ project, role, user, task }) {
+  requirePendingSuggestion(role, task);
+  task.assignee = user._id;
+  task.suggestedBy = null;
+  task.suggestedAt = null;
+  await task.save();
+  await populateTask(task);
+  await logActivity(project._id, user._id, `accepted the suggestion for ${quote(task.title)}`);
+  return task;
+}
+
+export async function declineSuggestion({ project, role, user, task }) {
+  requirePendingSuggestion(role, task);
+  task.suggestedBy = null;
+  task.suggestedAt = null;
+  await task.save();
+  await populateTask(task);
+  await logActivity(project._id, user._id, `declined the suggestion for ${quote(task.title)}`);
+  return task;
+}
+
+// ---------- Subtasks ----------
+function findSubtask(task, subtaskId) {
+  const subtask = isObjectId(subtaskId) ? task.subtasks.id(subtaskId) : null;
+  if (!subtask) throw new NotFoundError();
+  return subtask;
+}
+
+export async function addSubtask({ project, role, user, task }, data) {
+  if (!canEditSubtasks(role, task, user._id)) throw new ForbiddenError('Not allowed');
+  if (task.subtasks.length >= MAX_SUBTASKS) throw new BadRequestError(`A task can have at most ${MAX_SUBTASKS} subtasks`);
+  task.subtasks.push(data);
+  await task.save();
+  await populateTask(task);
+  await logActivity(project._id, user._id, `added subtask ${quote(data.title)} to ${quote(task.title)}`);
+  return task;
+}
+
+export async function updateSubtask({ project, role, user, task }, subtaskId, updates) {
+  if (!canEditSubtasks(role, task, user._id)) throw new ForbiddenError('Not allowed');
+  const subtask = findSubtask(task, subtaskId);
+  const justCompleted = updates.done === true && !subtask.done;
+  Object.assign(subtask, updates);
+  await task.save();
+  await populateTask(task);
+  if (justCompleted) {
+    await logActivity(project._id, user._id, `completed subtask ${quote(subtask.title)} in ${quote(task.title)}`);
+  }
+  return task;
+}
+
+export async function deleteSubtask({ role, user, task }, subtaskId) {
+  if (!canEditSubtasks(role, task, user._id)) throw new ForbiddenError('Not allowed');
+  findSubtask(task, subtaskId).deleteOne();
+  await task.save();
+  await populateTask(task);
+  return task;
 }

@@ -1,5 +1,11 @@
 import mongoose from 'mongoose';
 
+const subtaskSchema = new mongoose.Schema({
+  title: { type: String, required: true, trim: true, maxlength: 200 },
+  note: { type: String, trim: true, maxlength: 1000, default: '' },
+  done: { type: Boolean, default: false },
+});
+
 const taskSchema = new mongoose.Schema(
   {
     project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true, index: true },
@@ -9,6 +15,11 @@ const taskSchema = new mongoose.Schema(
     deadline: { type: Date, default: null },
     assignee: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    subtasks: [subtaskSchema],
+    // Members can't assign work to the owner, only suggest it. While suggestedBy is
+    // set, the task waits for the owner to accept (becomes assignee) or decline.
+    suggestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    suggestedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

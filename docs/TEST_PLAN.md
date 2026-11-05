@@ -124,7 +124,28 @@ After the test, wait 15 minutes (or restart the backend locally) before signing 
 
 Note: with the default `onboarding@resend.dev` sender, only the Resend account owner's address receives email. Reminders for B will show as `failures` unless a domain is verified.
 
-## 11. Cleanup
+## 11. Member roles, suggestions, subtasks, chat
+
+Do this with B back in a project owned by A.
+
+| # | Step | Expected |
+|---|---|---|
+| 11.1 | A: open the Members tab | A is listed first with an Owner badge; B has a Member badge |
+| 11.2 | B: Add task, choose A as assignee | The option says "(owner, as a suggestion)" and the form explains the owner must confirm |
+| 11.3 | B: click "Add and suggest" | The card says Unassigned and "Waiting for the owner to confirm" |
+| 11.4 | A: refresh the board | A banner says a task was suggested; the bell count goes up; the card has Accept and Decline |
+| 11.5 | A: click Accept | The task is assigned to A and appears in A's My Tasks |
+| 11.6 | B: suggest another task; A: Decline it from My Tasks | The task stays Unassigned and the suggestion is gone |
+| 11.7 | A or B: click a task's title you can edit, add a subtask with notes | The subtask and notes appear, with "0 of 1 done" |
+| 11.8 | Tick its checkbox | "1 of 1 done"; the title is struck through; the card shows 1/1 |
+| 11.9 | B: open a task B didn't create and isn't assigned | Checkboxes are disabled and there's no add form |
+| 11.10 | B: open the Chat tab and send a message | It appears on the right |
+| 11.11 | A: on another tab of the project, wait up to 30 seconds | A red dot appears on the Chat tab |
+| 11.12 | A: open Chat, reply; watch B's window | The reply reaches B within about 5 seconds, without refreshing |
+| 11.13 | B: hover over A's message, then B's own | Only B's own message has a delete icon |
+| 11.14 | Outsider: open `<site>/api/projects/<id>/messages` | `{"error":"Not found"}` |
+
+## 12. Cleanup
 
 - A: delete "Test project" and "Private project" (Settings tab > Delete project on each).
 - If you used demo data: `npm run seed:clear` in `backend`.
