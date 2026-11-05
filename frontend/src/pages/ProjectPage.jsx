@@ -9,7 +9,8 @@ import ActivityPanel from '../components/ActivityPanel';
 import Modal from '../components/Modal';
 import TaskCard from '../components/TaskCard';
 import TaskDetail from '../components/TaskDetail';
-import { CalendarIcon, FolderIcon, LinkIcon, PlusIcon, TrashIcon } from '../components/Icons';
+import EditProjectModal from '../components/EditProjectModal';
+import { CalendarIcon, EditIcon, FolderIcon, LinkIcon, PlusIcon, TrashIcon } from '../components/Icons';
 import { getLastRead } from '../utils/chatRead';
 import { projectGradient } from '../utils/colors';
 import { isOverdue } from '../utils/dates';
@@ -47,6 +48,7 @@ export default function ProjectPage() {
   const [memberError, setMemberError] = useState('');
   const [projectForm, setProjectForm] = useState(null); // { name, description } once edited
   const [settingsMsg, setSettingsMsg] = useState(null); // { ok, text }
+  const [editingProject, setEditingProject] = useState(false);
   const [invite, setInvite] = useState(null); // { url, expiresAt } right after generating
   const [inviteMsg, setInviteMsg] = useState('');
   const [activity, setActivity] = useState(null);
@@ -118,6 +120,7 @@ export default function ProjectPage() {
   }, [id, tab, user._id, loaded]);
 
   const clearUnread = useCallback(() => setUnread(false), []);
+  const closeProjectEdit = useCallback(() => setEditingProject(false), []);
 
   // Replaces one task in the list with the server's copy
   const applyTask = (task) => setTasks((list) => list.map((t) => (t._id === task._id ? task : t)));
@@ -417,6 +420,9 @@ export default function ProjectPage() {
           {project.description && <p className="muted">{project.description}</p>}
         </div>
         <div className="channel-actions">
+          {isOwner && (
+            <button type="button" className="btn" onClick={() => setEditingProject(true)}><EditIcon size={18} /> Edit</button>
+          )}
           <Link className="btn" to={`/projects/${id}/timeline`}><CalendarIcon size={18} /> Timeline</Link>
           <button type="button" className="btn btn-primary" onClick={openNewTask}><PlusIcon size={18} /> Add task</button>
         </div>
@@ -624,6 +630,22 @@ export default function ProjectPage() {
           canEditSubtasks={canManage(detailTask) || isAssignee(detailTask)}
           onUpdated={onTaskUpdated}
           onClose={() => setDetailId(null)}
+        />
+      )}
+
+      {editingProject && (
+        <EditProjectModal
+          projectId={id}
+          name={project.name}
+          description={project.description}
+          onClose={closeProjectEdit}
+          onSaved={(updated) => {
+            setData({ ...data, project: updated });
+            setProjectForm(null);
+            setEditingProject(false);
+            notifyProjectsChanged();
+            toast('Project updated.');
+          }}
         />
       )}
 

@@ -1,14 +1,16 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { ProjectMark } from '../components/Avatar';
+import EditProjectModal from '../components/EditProjectModal';
 import Modal from '../components/Modal';
-import { FolderIcon, PlusIcon, SearchIcon } from '../components/Icons';
+import { EditIcon, FolderIcon, MoreIcon, PlusIcon, SearchIcon, TrashIcon } from '../components/Icons';
 import { projectGradient } from '../utils/colors';
 import { timeAgo } from '../utils/dates';
-import { notifyProjectsChanged } from '../utils/events';
-import { toast } from '../utils/feedback';
+import { notifyProjectsChanged, notifyTasksChanged } from '../utils/events';
+import { confirmDialog, toast } from '../utils/feedback';
+import useClickOutside from '../utils/useClickOutside';
 import useTitle from '../utils/useTitle';
 
 const FILTERS = [
@@ -17,16 +19,46 @@ const FILTERS = [
   { value: 'member', label: 'Joined' },
 ];
 
-function ProjectCard({ project: p }) {
+// The owner's Edit / Delete menu on a project card
+function CardMenu({ project: p, onEdit, onDelete }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const close = useCallback(() => setOpen(false), []);
+  useClickOutside(ref, open, close);
+
   return (
-    <Link to={`/projects/${p.id}`} className="project-card">
-      <div className="project-thumb" style={{ background: projectGradient(p.id) }}>
+    <div ref={ref} className="menu-wrap card-menu">
+      <button
+        type="button"
+        className="icon-btn icon-btn-sm"
+        onClick={() => setOpen((o) => !o)}
+        aria-label={`Options for ${p.name}`}
+        aria-expanded={open}
+      >
+        <MoreIcon size={20} />
+      </button>
+      {open && (
+        <div className="menu menu-sm">
+          <button type="button" className="menu-item" onClick={() => { close(); onEdit(p); }}><EditIcon size={18} /> Edit</button>
+          <button type="button" className="menu-item menu-item-danger" onClick={() => { close(); onDelete(p); }}><TrashIcon size={18} /> Delete</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProjectCard({ project: p, onEdit, onDelete }) {
+  const to = `/projects/${p.id}`;
+  return (
+    <div className="project-card">
+      <Link to={to} className="project-thumb" style={{ background: projectGradient(p.id) }}>
         <span className="project-thumb-title">{p.name}</span>
         <span className="thumb-badge">{p.memberCount} member{p.memberCount === 1 ? '' : 's'}</span>
-      </div>
+      </Link>
       <div className="project-info">
         <ProjectMark id={p.id} name={p.name} size={36} radius={18} />
-        <div style={{ minWidth: 0 }}>
+        {/* Same destination as the thumbnail above, so it's skipped when tabbing */}
+        <Link to={to} className="project-info-link" tabIndex={-1}>
           <div className="project-meta">{p.role === 'owner' ? 'Owner' : 'Member'} · updated {timeAgo(p.updatedAt)}</div>
           {p.description && <div className="project-desc">{p.description}</div>}
           {p.taskCount > 0 && (
@@ -35,9 +67,10 @@ function ProjectCard({ project: p }) {
               <small className="muted">{p.doneCount}/{p.taskCount} tasks done</small>
             </div>
           )}
-        </div>
+        </Link>
+        {p.role === 'owner' && <CardMenu project={p} onEdit={onEdit} onDelete={onDelete} />}
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -65,6 +98,7 @@ export default function Dashboard() {
   const [loadError, setLoadError] = useState('');
   const [filter, setFilter] = useState('all');
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState(null); // the project being edited
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
@@ -104,6 +138,34 @@ export default function Dashboard() {
       setError(status === 429 ? err.response.data.error
         : status === 400 ? 'Could not create the project. Check the name and try again.'
         : 'Could not create the project. Please try again.');
+    }
+  };
+
+  const closeEdit = useCallback(() => setEditing(null), []);
+
+  const onProjectSaved = async () => {
+    setEditing(null);
+    notifyProjectsChanged();
+    toast('Project updated.');
+    await load();
+  };
+
+  const deleteProject = async (p) => {
+    const ok = await confirmDialog({
+      title: `Delete "${p.name}"?`,
+      message: 'This removes the project, its tasks and its chat for everyone. It can\'t be undone.',
+      confirmLabel: 'Delete project',
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await api.delete(`/projects/${p.id}`);
+      notifyProjectsChanged();
+      notifyTasksChanged();
+      toast('Project deleted.');
+      await load();
+    } catch (err) {
+      toast(err.response?.data?.error || 'Could not delete the project.', 'error');
     }
   };
 
@@ -152,7 +214,7 @@ export default function Dashboard() {
         <p className="alert">{loadError}</p>
       ) : visible.length > 0 ? (
         <div className="project-grid">
-          {visible.map((p) => <ProjectCard key={p.id} project={p} />)}
+          {visible.map((p) => <ProjectCard key={p.id} project={p} onEdit={setEditing} onDelete={deleteProject} />)}
         </div>
       ) : projects.length === 0 ? (
         <div className="empty">
@@ -169,6 +231,16 @@ export default function Dashboard() {
           <h2>No matching projects</h2>
           <p>Try a different search or filter.</p>
         </div>
+      )}
+
+      {editing && (
+        <EditProjectModal
+          projectId={editing.id}
+          name={editing.name}
+          description={editing.description}
+          onClose={closeEdit}
+          onSaved={onProjectSaved}
+        />
       )}
 
       {creating && (
