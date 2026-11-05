@@ -1,4 +1,6 @@
-// Lets pages tell the notification bell that tasks changed, so it refreshes
-// right away instead of waiting for the next window focus. No polling.
-export const TASKS_CHANGED = 'taskhub:tasks-changed';
+// Lets pages tell shared UI that data changed, so it refreshes right away. No polling.
+export const TASKS_CHANGED = 'taskhub:tasks-changed'; // notification bell
+export const PROJECTS_CHANGED = 'taskhub:projects-changed'; // sidebar project list
+
 export const notifyTasksChanged = () => window.dispatchEvent(new Event(TASKS_CHANGED));
+export const notifyProjectsChanged = () => window.dispatchEvent(new Event(PROJECTS_CHANGED));

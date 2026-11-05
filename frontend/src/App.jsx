@@ -1,50 +1,25 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useParams } from "react-router-dom";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Layout from "./components/Layout";
 import Privacy from "./pages/Privacy.jsx";
 import ProjectPage from "./pages/ProjectPage";
 import MyTasks from "./pages/MyTasks";
 import InvitePage from "./pages/InvitePage";
 import TimelinePage from "./pages/TimelinePage";
 
+// A fresh ProjectPage per project, so switching in the sidebar never shows stale data
+function ProjectRoute() {
+  const { id } = useParams();
+  return <ProjectPage key={id} />;
+}
+
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/projects/:id"
-        element={
-          <ProtectedRoute>
-            <ProjectPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/projects/:id/timeline"
-        element={
-          <ProtectedRoute>
-            <TimelinePage />
-          </ProtectedRoute>
-        }
-      />
       <Route path="/privacy" element={<Privacy />} />
-      <Route
-        path="/my-tasks"
-        element={
-          <ProtectedRoute>
-            <MyTasks />
-          </ProtectedRoute>
-        }
-      />
       <Route
         path="/invite/:token"
         element={
@@ -53,6 +28,18 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+        element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/my-tasks" element={<MyTasks />} />
+        <Route path="/projects/:id" element={<ProjectRoute />} />
+        <Route path="/projects/:id/timeline" element={<TimelinePage />} />
+      </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );

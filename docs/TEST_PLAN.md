@@ -29,18 +29,18 @@ Sign A back in before continuing.
 | # | Step | Expected |
 |---|---|---|
 | 2.1 | A: create project "Test project" | Appears in "Your projects" as owner, 1 member |
-| 2.2 | A: open it, add a task due **tomorrow**, assigned to A | Task appears in To do; progress chart shows 1 task |
-| 2.3 | A: add a task due **yesterday**, assigned to A | Red border and "OVERDUE"; Overdue count = 1 |
+| 2.2 | A: open it, add a task due **tomorrow**, assigned to A | Task appears in To do on the Board tab; the Progress tab shows 1 task |
+| 2.3 | A: add a task due **yesterday**, assigned to A | Red border and "Overdue"; the Progress tab's Overdue count = 1 |
 | 2.4 | A: add a task named `<img src=x onerror=alert(1)>` | Shown as plain text; no alert pops up |
 | 2.5 | A: change a task's status to In progress | It moves column; Activity shows "moved ... from To do to In progress" |
 | 2.6 | A: click the bell | Badge shows 2 (the overdue and the tomorrow task, both assigned to A); dropdown lists them |
-| 2.7 | A: click "View timeline" | Overdue group first, then dates, then No deadline |
+| 2.7 | A: click "Timeline" | Overdue group first, then dates, then No deadline |
 
 ## 3. Invite flow
 
 | # | Step | Expected |
 |---|---|---|
-| 3.1 | A: Members section > Generate invite link > Copy link | Link shown with an expiry date 7 days ahead |
+| 3.1 | A: Members tab > Generate invite link > Copy link | Link shown with an expiry date 7 days ahead |
 | 3.2 | B (private window, logged out): paste the link | Login page says "Sign in to accept your project invite" |
 | 3.3 | B: sign in with Google | Back on the invite page: "You're invited to join Test project" |
 | 3.4 | B: click Join project | Project page opens; B is listed as member |
@@ -51,7 +51,7 @@ Sign A back in before continuing.
 
 | # | Step | Expected |
 |---|---|---|
-| 4.1 | B: look at the project page | No Edit project, Delete project, invite link panel, or Remove buttons |
+| 4.1 | B: look at the project page | No Settings tab (edit/delete project); on the Members tab, no invite link panel or Remove buttons |
 | 4.2 | B: on a task created by A and not assigned to B | No status dropdown, no Edit or Delete |
 | 4.3 | A: assign a task to B | B (after refresh) sees only the status dropdown on it |
 | 4.4 | B: change that task to Done | Works; A sees it moved and the activity entry |
@@ -126,5 +126,5 @@ Note: with the default `onboarding@resend.dev` sender, only the Resend account o
 
 ## 11. Cleanup
 
-- A: delete "Test project" and "Private project" (Delete project at the bottom of each).
+- A: delete "Test project" and "Private project" (Settings tab > Delete project on each).
 - If you used demo data: `npm run seed:clear` in `backend`.

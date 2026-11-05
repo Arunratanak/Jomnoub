@@ -40,15 +40,16 @@
 1. **Sign in** (Account A) with Google: "No passwords stored; the server verifies Google's token."
 2. **Dashboard:** projects list, the **bell** with its count, "My tasks". Open the bell dropdown.
 3. **Demo project:**
-   - Progress bar, overdue and due-this-week cards, **status pie** and **workload chart** per member.
-   - Board columns; point at a red overdue task.
-   - Create a task, assign it, change its status: point at the **Activity** panel updating.
+   - **Board** tab: status columns; point at a red overdue task. Create a task, assign it, change its status.
+   - **Activity** tab: show those changes logged.
+   - **Progress** tab: progress bar, overdue and due-this-week tiles, **status donut** and **workload chart** per member.
+   - Toggle **dark mode** in the top bar.
 4. **Timeline view:** Overdue group first, then dates, then No deadline. Toggle "Show completed".
 5. **Invite flow:**
    - A: Generate invite link > Copy.
    - B (private window): paste, sign in, **Join project**.
    - A: refresh, B appears in Members and in Activity ("joined via invite link").
-6. **Permissions:** as B, show that there are no Edit/Delete/Invite buttons, and that B can only change the status of a task assigned to them.
+6. **Permissions:** as B, show that there is no Settings tab or invite panel, and that B can only change the status of a task assigned to them.
 7. **My Tasks** as A: all assigned tasks across projects, soonest first.
 8. **Reminder email:** show the email in your inbox (or the GitHub Actions run with `"emails":1`). "This runs every morning; a log table guarantees nobody gets the same reminder twice."
 

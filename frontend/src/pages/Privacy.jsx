@@ -1,12 +1,19 @@
+import { Link } from 'react-router-dom';
+import Logo from '../components/Logo';
+import ThemeToggle from '../components/ThemeToggle';
 import useTitle from '../utils/useTitle';
 
 export default function Privacy() {
   useTitle('Privacy policy');
-  const contactEmail = 'your-email@example.com'; // replace with your real email
+  const contactEmail = 'prak092839351@gmail.com';
   const lastUpdated = 'November 3, 2026';
 
   return (
-    <main style={{ maxWidth: 720, margin: '48px auto', padding: '0 20px', lineHeight: 1.6 }}>
+    <main className="prose">
+      <div className="prose-head">
+        <Link to="/dashboard" className="logo" aria-label="TaskHub home"><Logo /></Link>
+        <ThemeToggle />
+      </div>
       <h1>TaskHub Privacy Policy</h1>
       <p><em>Last updated: {lastUpdated}</em></p>
 

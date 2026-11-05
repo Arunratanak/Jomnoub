@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api from '../api/client';
+import Avatar from '../components/Avatar';
 import Loading from '../components/Loading';
+import { CalendarIcon, FolderIcon } from '../components/Icons';
 import useTitle from '../utils/useTitle';
 import { OVERDUE, NO_DEADLINE, utcDay, groupTasks } from '../utils/timeline';
 
 const STATUS_LABELS = { todo: 'To do', 'in-progress': 'In progress', done: 'Done' };
+const STATUS_COLORS = { todo: 'var(--status-todo)', 'in-progress': 'var(--status-progress)', done: 'var(--status-done)' };
 
 function dayLabel(key, todayKey, tomorrowKey) {
   const text = new Date(`${key}T00:00:00Z`).toLocaleDateString(undefined, {
@@ -35,10 +38,11 @@ export default function TimelinePage() {
 
   if (loadError) {
     return (
-      <div style={{ maxWidth: 640, margin: '60px auto', padding: '0 16px' }}>
+      <div className="empty">
+        <FolderIcon />
         <h2>{loadError === 'notFound' ? 'Project not found' : 'Could not load the timeline'}</h2>
         {loadError === 'failed' && <p>Check your connection and refresh the page.</p>}
-        <Link to="/dashboard">Back to dashboard</Link>
+        <Link className="btn" to="/dashboard">Back to home</Link>
       </div>
     );
   }
@@ -53,42 +57,54 @@ export default function TimelinePage() {
   const groups = groupTasks(visible);
 
   return (
-    <div style={{ maxWidth: 720, margin: '40px auto', padding: '0 16px' }}>
+    <div style={{ maxWidth: 760 }}>
       <Link to={`/projects/${id}`}>← Back to project</Link>
-      <h1 style={{ overflowWrap: 'anywhere' }}>{project.name}: timeline</h1>
-      <label>
-        <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} /> Show completed
-      </label>
+      <div className="page-head">
+        <h1>{project.name}: timeline</h1>
+        <label className="check">
+          <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} /> Show completed
+        </label>
+      </div>
 
       {groups.length === 0 ? (
-        <p style={{ marginTop: 24 }}>
-          {tasks.length === 0 ? 'No tasks in this project yet.' : 'All tasks are done. Tick "Show completed" to see them.'}
-        </p>
+        <div className="empty">
+          <CalendarIcon />
+          <h2>{tasks.length === 0 ? 'No tasks yet' : 'All tasks are done'}</h2>
+          <p>{tasks.length === 0 ? 'Add a task on the project board to see it here.' : 'Tick "Show completed" to see them.'}</p>
+        </div>
       ) : (
-        groups.map(({ key, tasks: items }) => (
-          <section key={key} style={{ margin: '24px 0' }}>
-            <h2 style={{ fontSize: 18, color: key === OVERDUE ? 'crimson' : 'inherit', borderBottom: '1px solid #ddd', paddingBottom: 4 }}>
-              {key === OVERDUE ? 'Overdue' : key === NO_DEADLINE ? 'No deadline' : dayLabel(key, todayKey, tomorrowKey)}
-              {' '}<small style={{ fontWeight: 'normal', color: '#666' }}>({items.length})</small>
-            </h2>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 8 }}>
-              {items.map((t) => (
-                <li
-                  key={t._id}
-                  style={{ border: `1px solid ${key === OVERDUE ? 'crimson' : '#ccc'}`, borderRadius: 8, padding: 10, overflowWrap: 'anywhere' }}
-                >
-                  <strong style={{ textDecoration: t.status === 'done' ? 'line-through' : 'none' }}>{t.title}</strong>
-                  <div>
-                    <small>
-                      {t.assignee ? t.assignee.name : 'Unassigned'} · {STATUS_LABELS[t.status]}
-                      {key === OVERDUE && ` · was due ${new Date(t.deadline).toLocaleDateString(undefined, { timeZone: 'UTC' })}`}
-                    </small>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))
+        groups.map(({ key, tasks: items }) => {
+          const dotClass = key === OVERDUE ? ' overdue' : key === NO_DEADLINE ? ' none' : '';
+          return (
+            <section key={key} className="timeline-group">
+              <span className={`timeline-dot${dotClass}`} aria-hidden="true" />
+              <h2 className={`timeline-head${key === OVERDUE ? ' overdue' : ''}`}>
+                {key === OVERDUE ? 'Overdue' : key === NO_DEADLINE ? 'No deadline' : dayLabel(key, todayKey, tomorrowKey)}
+                {' '}<small className="muted" style={{ fontWeight: 400 }}>({items.length})</small>
+              </h2>
+              <ul className="timeline-tasks">
+                {items.map((t) => (
+                  <li key={t._id} className={`task-card${key === OVERDUE ? ' overdue' : ''}`} style={{ marginBottom: 0 }}>
+                    <span className={`task-title${t.status === 'done' ? ' done-title' : ''}`}>{t.title}</span>
+                    <div className="feed-meta">
+                      <span className="task-people">
+                        <Avatar user={t.assignee} size={20} />
+                        {t.assignee ? t.assignee.name : 'Unassigned'}
+                      </span>
+                      <span className="status-pill">
+                        <span className="dot" style={{ background: STATUS_COLORS[t.status] }} aria-hidden="true" />
+                        {STATUS_LABELS[t.status]}
+                      </span>
+                      {key === OVERDUE && (
+                        <span className="due overdue">was due {new Date(t.deadline).toLocaleDateString(undefined, { timeZone: 'UTC' })}</span>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        })
       )}
     </div>
   );

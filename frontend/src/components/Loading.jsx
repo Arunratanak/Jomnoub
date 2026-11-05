@@ -11,7 +11,8 @@ export default function Loading() {
   }, []);
 
   return (
-    <div style={{ textAlign: 'center', margin: '60px auto' }}>
+    <div className="loading" role="status">
+      <div className="spinner" aria-hidden="true" />
       <p>Loading...</p>
       {slow && <p><small>Waking up the server. This can take up to a minute the first time.</small></p>}
     </div>

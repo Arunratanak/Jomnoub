@@ -29,6 +29,10 @@ Built as a full-stack course final project.
 **Email reminders**
 - Once a day, a GitHub Actions workflow calls the backend, which emails each person one summary of their unfinished tasks that are overdue or due within 2 days (via Resend). The same reminder is never sent twice.
 
+**Interface**
+- App frame with a top bar, project search, a collapsible sidebar (a drawer plus bottom navigation on phones), and project pages with Board, Progress, Members, Activity and Settings tabs.
+- Green theme with a light/dark toggle. It starts from the device's preference and remembers your choice in this browser.
+
 **Demo data**
 - `npm run seed` creates a demo project with fake teammates and 12 tasks; `npm run seed:clear` removes it.
 
@@ -98,10 +102,12 @@ HttpError subclasses; middlewares/errorHandler.js sends them as { "error": "..."
 
 frontend/
   src/pages/             Login, Dashboard, ProjectPage, TimelinePage, MyTasks, InvitePage, Privacy
-  src/components/        ProtectedRoute, ProjectStats, ActivityPanel, NotificationBell, Loading
+  src/App.css            design tokens (light/dark colors) and all shared styles
+  src/components/        Layout (top bar, sidebar), ProtectedRoute, ProjectStats, ActivityPanel,
+                         NotificationBell, ThemeToggle, Modal, Avatar, Logo, Icons, Loading
   src/context/           AuthContext (current user)
   src/api/client.js      axios instance (cookies on, friendly 429 message)
-  src/utils/             dates, timeline, events, useTitle
+  src/utils/             dates, timeline, events, theme, colors, useTitle, useClickOutside
 .github/workflows/reminders.yml   daily reminder job
 docs/                    SECURITY.md, TEST_PLAN.md, PRESENTATION.md
 ```

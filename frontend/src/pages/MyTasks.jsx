@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
-import { isOverdue } from '../utils/dates';
 import Loading from '../components/Loading';
-import NotificationBell from '../components/NotificationBell';
-import useTitle from '../utils/useTitle';
+import { AlertIcon, CalendarIcon, TasksIcon } from '../components/Icons';
+import { firstLetter, projectGradient } from '../utils/colors';
+import { isOverdue } from '../utils/dates';
 import { notifyTasksChanged } from '../utils/events';
+import useTitle from '../utils/useTitle';
 
 const STATUSES = [
   { value: 'todo', label: 'To do' },
@@ -13,12 +14,26 @@ const STATUSES = [
   { value: 'done', label: 'Done' },
 ];
 
+const FILTERS = [
+  { value: 'active', label: 'Active', test: (t) => t.status !== 'done' },
+  { value: 'overdue', label: 'Overdue', test: isOverdue },
+  { value: 'done', label: 'Completed', test: (t) => t.status === 'done' },
+  { value: 'all', label: 'All', test: () => true },
+];
+
+const EMPTY_TEXT = {
+  active: 'Nothing assigned to you right now.',
+  overdue: 'Nothing overdue. Nice work!',
+  done: 'No completed tasks yet.',
+  all: 'No tasks are assigned to you yet.',
+};
+
 export default function MyTasks() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showDone, setShowDone] = useState(false);
-  useTitle('My tasks');
+  const [filter, setFilter] = useState('active');
   const [error, setError] = useState('');
+  useTitle('My tasks');
 
   const load = () =>
     api
@@ -42,45 +57,84 @@ export default function MyTasks() {
     }
   };
 
-  const visible = tasks.filter((t) => showDone || t.status !== 'done');
+  const active = FILTERS.find((f) => f.value === filter);
+  const visible = tasks.filter(active.test);
 
   return (
-    <div style={{ maxWidth: 720, margin: '40px auto', padding: '0 16px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <Link to="/dashboard">← Back</Link>
-        <NotificationBell />
+    <>
+      <div className="page-head">
+        <div>
+          <h1>My tasks</h1>
+          <p className="muted">Everything assigned to you, soonest deadline first.</p>
+        </div>
       </div>
-      <h1>My tasks</h1>
-      <label>
-        <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} /> Show completed
-      </label>
-      {error && <p style={{ color: 'crimson' }}>{error}</p>}
+
+      <div className="chips" role="group" aria-label="Filter tasks">
+        {FILTERS.map((f) => (
+          <button
+            key={f.value}
+            type="button"
+            className={`chip${filter === f.value ? ' active' : ''}`}
+            aria-pressed={filter === f.value}
+            onClick={() => setFilter(f.value)}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {error && <p className="alert" style={{ marginBottom: 16 }}>{error}</p>}
 
       {loading ? (
         <Loading />
       ) : error && tasks.length === 0 ? null : visible.length === 0 ? (
-        <p>Nothing assigned to you right now.</p>
+        <div className="empty">
+          <TasksIcon />
+          <h2>All clear</h2>
+          <p>{EMPTY_TEXT[filter]}</p>
+        </div>
       ) : (
-        visible.map((t) => (
-          <div
-            key={t._id}
-            style={{
-              border: `1px solid ${isOverdue(t) ? 'crimson' : '#ccc'}`,
-              borderRadius: 8, padding: 12, margin: '12px 0', overflowWrap: 'anywhere',
-            }}
-          >
-            <strong>{t.title}</strong>
-            <div>
-              <Link to={`/projects/${t.project._id}`}>{t.project.name}</Link>
-              {t.deadline && ` · Due ${new Date(t.deadline).toLocaleDateString()}`}
-              {isOverdue(t) && <span style={{ color: 'crimson' }}> · OVERDUE</span>}
-            </div>
-            <select value={t.status} onChange={(e) => changeStatus(t, e.target.value)} style={{ marginTop: 8 }}>
-              {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </select>
-          </div>
-        ))
+        <div className="feed">
+          {visible.map((t) => {
+            const overdue = isOverdue(t);
+            return (
+              <div key={t._id} className="feed-item">
+                <Link
+                  to={`/projects/${t.project._id}`}
+                  className="feed-thumb"
+                  style={{ background: projectGradient(t.project._id) }}
+                  aria-hidden="true"
+                  tabIndex={-1}
+                >
+                  {firstLetter(t.project.name)}
+                </Link>
+                <div className="feed-body">
+                  <span className={`feed-title${t.status === 'done' ? ' done-title' : ''}`}>{t.title}</span>
+                  <div className="feed-meta">
+                    <Link to={`/projects/${t.project._id}`}>{t.project.name}</Link>
+                    {t.deadline && (
+                      <span className={`due${overdue ? ' overdue' : ''}`}>
+                        {overdue ? <AlertIcon size={14} /> : <CalendarIcon size={14} />}
+                        {overdue ? 'Overdue · was due' : 'Due'} {new Date(t.deadline).toLocaleDateString(undefined, { timeZone: 'UTC' })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="feed-action">
+                  <select
+                    className="select select-sm"
+                    value={t.status}
+                    onChange={(e) => changeStatus(t, e.target.value)}
+                    aria-label={`Status of ${t.title}`}
+                  >
+                    {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  </select>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
-    </div>
+    </>
   );
 }

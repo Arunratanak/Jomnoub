@@ -1,20 +1,66 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import Loading from '../components/Loading';
-import NotificationBell from '../components/NotificationBell';
+import { ProjectMark } from '../components/Avatar';
+import Modal from '../components/Modal';
+import { FolderIcon, PlusIcon, SearchIcon } from '../components/Icons';
+import { projectGradient } from '../utils/colors';
+import { timeAgo } from '../utils/dates';
+import { notifyProjectsChanged } from '../utils/events';
 import useTitle from '../utils/useTitle';
 
+const FILTERS = [
+  { value: 'all', label: 'All' },
+  { value: 'owner', label: 'Owned by me' },
+  { value: 'member', label: 'Joined' },
+];
+
+function ProjectCard({ project: p }) {
+  return (
+    <Link to={`/projects/${p.id}`} className="project-card">
+      <div className="project-thumb" style={{ background: projectGradient(p.id) }}>
+        <span className="project-thumb-title">{p.name}</span>
+        <span className="thumb-badge">{p.memberCount} member{p.memberCount === 1 ? '' : 's'}</span>
+      </div>
+      <div className="project-info">
+        <ProjectMark id={p.id} name={p.name} size={36} radius={18} />
+        <div style={{ minWidth: 0 }}>
+          <div className="project-meta">{p.role === 'owner' ? 'Owner' : 'Member'} · updated {timeAgo(p.updatedAt)}</div>
+          {p.description && <div className="project-desc">{p.description}</div>}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function SkeletonGrid() {
+  return (
+    <div className="project-grid" aria-hidden="true">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i}>
+          <div className="skeleton" style={{ aspectRatio: '16 / 9', borderRadius: 12 }} />
+          <div className="skeleton" style={{ height: 16, width: '80%', marginTop: 12 }} />
+          <div className="skeleton" style={{ height: 12, width: '50%', marginTop: 8 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Dashboard() {
-  const { user, logout } = useAuth();
-  useTitle('Dashboard');
+  const { user } = useAuth();
+  useTitle('Home');
+  const [params, setParams] = useSearchParams();
+  const query = (params.get('q') || '').trim();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
-  const [loadError, setLoadError] = useState('');
 
   const load = () =>
     api
@@ -30,6 +76,11 @@ export default function Dashboard() {
     load();
   }, []);
 
+  const closeModal = useCallback(() => {
+    setCreating(false);
+    setError('');
+  }, []);
+
   const create = async (e) => {
     e.preventDefault();
     setError('');
@@ -37,6 +88,8 @@ export default function Dashboard() {
       await api.post('/projects', { name, description });
       setName('');
       setDescription('');
+      setCreating(false);
+      notifyProjectsChanged();
       await load();
     } catch (err) {
       const status = err.response?.status;
@@ -46,49 +99,89 @@ export default function Dashboard() {
     }
   };
 
+  const q = query.toLowerCase();
+  const visible = projects.filter((p) =>
+    (filter === 'all' || p.role === filter) &&
+    (!q || p.name.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q))
+  );
+
   return (
-    <div style={{ maxWidth: 640, margin: '60px auto', padding: '0 16px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        {user.picture && (
-          <img src={user.picture} alt="" width={40} height={40} style={{ borderRadius: '50%' }} referrerPolicy="no-referrer" />
-        )}
-        <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-          <strong>{user.name}</strong>
-          <div>{user.email}</div>
+    <>
+      <div className="page-head">
+        <div>
+          <h1>Welcome back, {user.name.split(' ')[0]}</h1>
+          <p className="muted">Here's what your teams are working on.</p>
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <NotificationBell />
-          <button onClick={logout}>Log out</button>
-        </div>
+        <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
+          <PlusIcon size={18} /> New project
+        </button>
       </div>
-      <p><Link to="/my-tasks">My tasks →</Link></p>
 
-      <h2>New project</h2>
-      <form onSubmit={create} style={{ display: 'grid', gap: 8 }}>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Project name" maxLength={100} required />
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)" maxLength={500} />
-        <button type="submit">Create project</button>
-        {error && <p style={{ color: 'crimson' }}>{error}</p>}
-      </form>
+      <div className="chips" role="group" aria-label="Filter projects">
+        {FILTERS.map((f) => (
+          <button
+            key={f.value}
+            type="button"
+            className={`chip${filter === f.value ? ' active' : ''}`}
+            aria-pressed={filter === f.value}
+            onClick={() => setFilter(f.value)}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
 
-      <h2>Your projects</h2>
-      {loading ? (
-        <Loading />
-      ) : loadError ? (
-        <p style={{ color: 'crimson' }}>{loadError}</p>
-      ) : projects.length === 0 ? (
-        <p>No projects yet. Create your first one above.</p>
-      ) : (
-        <ul style={{ listStyle: 'none', padding: 0, display: 'grid', gap: 8 }}>
-          {projects.map((p) => (
-            <li key={p.id} style={{ border: '1px solid #ccc', borderRadius: 8, padding: 12, overflowWrap: 'anywhere' }}>
-              <Link to={`/projects/${p.id}`}><strong>{p.name}</strong></Link>
-              <div>{p.description}</div>
-              <small>{p.role} · {p.memberCount} member{p.memberCount === 1 ? '' : 's'}</small>
-            </li>
-          ))}
-        </ul>
+      {query && (
+        <p style={{ marginBottom: 16 }} className="muted">
+          Results for "<strong>{query}</strong>" ·{' '}
+          <button type="button" className="btn btn-sm" onClick={() => setParams({})}>Clear search</button>
+        </p>
       )}
-    </div>
+
+      {loading ? (
+        <SkeletonGrid />
+      ) : loadError ? (
+        <p className="alert">{loadError}</p>
+      ) : visible.length > 0 ? (
+        <div className="project-grid">
+          {visible.map((p) => <ProjectCard key={p.id} project={p} />)}
+        </div>
+      ) : projects.length === 0 ? (
+        <div className="empty">
+          <FolderIcon />
+          <h2>No projects yet</h2>
+          <p>Create your first project, then invite your team.</p>
+          <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
+            <PlusIcon size={18} /> New project
+          </button>
+        </div>
+      ) : (
+        <div className="empty">
+          <SearchIcon />
+          <h2>No matching projects</h2>
+          <p>Try a different search or filter.</p>
+        </div>
+      )}
+
+      {creating && (
+        <Modal title="New project" onClose={closeModal}>
+          <form className="form" onSubmit={create}>
+            <label className="field">
+              <span>Project name</span>
+              <input className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} required autoFocus />
+            </label>
+            <label className="field">
+              <span>Description (optional)</span>
+              <textarea className="textarea" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={500} />
+            </label>
+            {error && <p className="alert">{error}</p>}
+            <div className="form-actions">
+              <button type="button" className="btn" onClick={closeModal}>Cancel</button>
+              <button type="submit" className="btn btn-primary">Create project</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+    </>
   );
 }

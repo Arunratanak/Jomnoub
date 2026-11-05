@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import api from '../api/client';
 import { isOverdue, needsAttention } from '../utils/dates';
 import { TASKS_CHANGED } from '../utils/events';
+import useClickOutside from '../utils/useClickOutside';
+import { BellIcon } from './Icons';
 
 const MAX_ITEMS = 5;
 
@@ -19,6 +21,8 @@ export default function NotificationBell() {
   const [error, setError] = useState(false);
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const close = () => setOpen(false);
+  useClickOutside(ref, open, close);
 
   useEffect(() => {
     let active = true;
@@ -42,85 +46,53 @@ export default function NotificationBell() {
     };
   }, []);
 
-  // Close on outside click/tap or Escape
-  useEffect(() => {
-    if (!open) return;
-    const onPointer = (e) => ref.current && !ref.current.contains(e.target) && setOpen(false);
-    const onKey = (e) => e.key === 'Escape' && setOpen(false);
-    document.addEventListener('mousedown', onPointer);
-    document.addEventListener('touchstart', onPointer);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onPointer);
-      document.removeEventListener('touchstart', onPointer);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
-
   const count = tasks?.length || 0;
   const label = error
     ? 'Notifications: could not load'
     : `Notifications: ${count} task${count === 1 ? '' : 's'} need${count === 1 ? 's' : ''} attention`;
 
   return (
-    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+    <div ref={ref} className="menu-wrap">
       <button
         type="button"
+        className="icon-btn"
         onClick={() => setOpen((o) => !o)}
         aria-label={label}
         aria-expanded={open}
         aria-controls="notification-panel"
         title={label}
-        style={{ position: 'relative', padding: '6px 8px', lineHeight: 0, minWidth: 40, minHeight: 40 }}
       >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-        </svg>
-        {count > 0 && (
-          <span
-            aria-hidden="true"
-            style={{
-              position: 'absolute', top: 0, right: 0, transform: 'translate(35%, -35%)',
-              background: 'crimson', color: '#fff', borderRadius: 999, fontSize: 11, fontWeight: 'bold',
-              minWidth: 18, height: 18, lineHeight: '18px', padding: '0 4px', textAlign: 'center',
-            }}
-          >
-            {count > 99 ? '99+' : count}
-          </span>
-        )}
+        <BellIcon />
+        {count > 0 && <span className="badge" aria-hidden="true">{count > 99 ? '99+' : count}</span>}
       </button>
 
       {open && (
-        <div
-          id="notification-panel"
-          style={{
-            position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 10,
-            width: 300, maxWidth: 'calc(100vw - 32px)', background: '#fff', color: '#111',
-            border: '1px solid #ccc', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.15)', padding: 12, textAlign: 'left',
-          }}
-        >
-          <strong>Needs attention</strong>
+        <div id="notification-panel" className="menu">
+          <div className="menu-section"><strong>Needs attention</strong></div>
+          <hr className="menu-sep" />
           {error ? (
-            <p style={{ color: 'crimson', margin: '8px 0' }}>Could not load your tasks.</p>
+            <p className="menu-section" style={{ color: 'var(--danger)' }}>Could not load your tasks.</p>
           ) : !tasks ? (
-            <p style={{ margin: '8px 0' }}>Loading...</p>
+            <p className="menu-section muted">Loading...</p>
           ) : count === 0 ? (
-            <p style={{ margin: '8px 0' }}>Nothing overdue or due in the next 2 days.</p>
+            <p className="menu-section muted">Nothing overdue or due in the next 2 days.</p>
           ) : (
-            <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0', display: 'grid', gap: 6 }}>
+            <ul>
               {tasks.slice(0, MAX_ITEMS).map((t) => (
-                <li key={t._id} style={{ overflowWrap: 'anywhere' }}>
-                  <Link to={`/projects/${t.project._id}`} onClick={() => setOpen(false)}>{t.title}</Link>
-                  <div>
-                    <small style={{ color: isOverdue(t) ? 'crimson' : '#555' }}>{t.project.name} · {dueText(t)}</small>
-                  </div>
+                <li key={t._id}>
+                  <Link className="notif" to={`/projects/${t.project._id}`} onClick={close}>
+                    <span className="notif-title">{t.title}</span>
+                    <small style={{ color: isOverdue(t) ? 'var(--danger)' : 'var(--text-2)' }}>
+                      {t.project.name} · {dueText(t)}
+                    </small>
+                  </Link>
                 </li>
               ))}
             </ul>
           )}
-          {count > MAX_ITEMS && <p style={{ margin: '4px 0' }}><small>+ {count - MAX_ITEMS} more</small></p>}
-          <Link to="/my-tasks" onClick={() => setOpen(false)}>See all my tasks →</Link>
+          {count > MAX_ITEMS && <p className="menu-section muted"><small>+ {count - MAX_ITEMS} more</small></p>}
+          <hr className="menu-sep" />
+          <Link className="menu-item" to="/my-tasks" onClick={close} style={{ color: 'var(--accent-text)' }}>See all my tasks</Link>
         </div>
       )}
     </div>

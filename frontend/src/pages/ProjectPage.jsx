@@ -1,22 +1,69 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import ProjectStats from '../components/ProjectStats';
+import Avatar, { ProjectMark } from '../components/Avatar';
 import Loading from '../components/Loading';
 import ActivityPanel from '../components/ActivityPanel';
-import NotificationBell from '../components/NotificationBell';
+import Modal from '../components/Modal';
+import { AlertIcon, CalendarIcon, EditIcon, FolderIcon, LinkIcon, PlusIcon, TrashIcon } from '../components/Icons';
+import { projectGradient } from '../utils/colors';
 import useTitle from '../utils/useTitle';
-import { notifyTasksChanged } from '../utils/events';
+import { notifyProjectsChanged, notifyTasksChanged } from '../utils/events';
 import { isOverdue } from '../utils/dates';
 
+// The chart library is large, so it only loads when the Progress tab is opened
+const ProjectStats = lazy(() => import('../components/ProjectStats'));
+
 const STATUSES = [
-  { value: 'todo', label: 'To do' },
-  { value: 'in-progress', label: 'In progress' },
-  { value: 'done', label: 'Done' },
+  { value: 'todo', label: 'To do', color: 'var(--status-todo)' },
+  { value: 'in-progress', label: 'In progress', color: 'var(--status-progress)' },
+  { value: 'done', label: 'Done', color: 'var(--status-done)' },
 ];
 const emptyForm = { title: '', description: '', assignee: '', deadline: '' };
 const errorMessage = (err, fallback) => err.response?.data?.error || fallback;
+
+function TaskCard({ task: t, canManage, canChangeStatus, onStatus, onEdit, onDelete }) {
+  const overdue = isOverdue(t);
+  return (
+    <div className={`task-card${overdue ? ' overdue' : ''}`}>
+      <div className="task-title">{t.title}</div>
+      {t.description && <div className="task-desc">{t.description}</div>}
+      {t.deadline && (
+        <span className={`due${overdue ? ' overdue' : ''}`}>
+          {overdue ? <AlertIcon size={14} /> : <CalendarIcon size={14} />}
+          {overdue ? 'Overdue · was due' : 'Due'} {new Date(t.deadline).toLocaleDateString(undefined, { timeZone: 'UTC' })}
+        </span>
+      )}
+      <div className="task-people">
+        <Avatar user={t.assignee} size={24} />
+        <span>{t.assignee ? t.assignee.name : 'Unassigned'}</span>
+      </div>
+      {(canManage || canChangeStatus) && (
+        <div className="task-actions">
+          <select
+            className="select select-sm"
+            value={t.status}
+            onChange={(e) => onStatus(t, e.target.value)}
+            aria-label={`Status of ${t.title}`}
+          >
+            {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
+          {canManage && (
+            <>
+              <button type="button" className="icon-btn icon-btn-sm" onClick={() => onEdit(t)} aria-label={`Edit ${t.title}`} title="Edit">
+                <EditIcon size={18} />
+              </button>
+              <button type="button" className="icon-btn icon-btn-sm" onClick={() => onDelete(t)} aria-label={`Delete ${t.title}`} title="Delete">
+                <TrashIcon size={18} />
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ProjectPage() {
   const { id } = useParams();
@@ -26,12 +73,16 @@ export default function ProjectPage() {
   const [tasks, setTasks] = useState([]);
   const [stats, setStats] = useState(null);
   const [loadError, setLoadError] = useState(null); // 'notFound' | 'failed' | null
+  const [tab, setTab] = useState('board');
   const [form, setForm] = useState(emptyForm);
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [memberEmail, setMemberEmail] = useState('');
   const [memberError, setMemberError] = useState('');
-  const [projectForm, setProjectForm] = useState(null); // { name, description } while editing
+  const [projectForm, setProjectForm] = useState(null); // { name, description } once edited
+  const [settingsMsg, setSettingsMsg] = useState(null); // { ok, text }
   const [invite, setInvite] = useState(null); // { url, expiresAt } right after generating
   const [inviteMsg, setInviteMsg] = useState('');
   const [activity, setActivity] = useState(null);
@@ -75,9 +126,24 @@ export default function ProjectPage() {
   }, [id]);
 
   // ---------- Tasks ----------
+  const openNewTask = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+    setFormError('');
+    setTaskFormOpen(true);
+    setTab('board');
+  };
+
+  const closeTaskForm = useCallback(() => {
+    setTaskFormOpen(false);
+    setEditingId(null);
+    setForm(emptyForm);
+    setFormError('');
+  }, []);
+
   const submit = async (e) => {
     e.preventDefault();
-    setError('');
+    setFormError('');
     const body = {
       title: form.title,
       description: form.description,
@@ -88,11 +154,10 @@ export default function ProjectPage() {
       if (editingId) await api.patch(`/projects/${id}/tasks/${editingId}`, body);
       else await api.post(`/projects/${id}/tasks`, body);
       notifyTasksChanged();
-      setForm(emptyForm);
-      setEditingId(null);
+      closeTaskForm();
       await loadTasks();
     } catch (err) {
-      setError(errorMessage(err, 'Could not save the task.'));
+      setFormError(errorMessage(err, 'Could not save the task.'));
     }
   };
 
@@ -104,6 +169,8 @@ export default function ProjectPage() {
       assignee: t.assignee?._id || '',
       deadline: t.deadline ? t.deadline.slice(0, 10) : '',
     });
+    setFormError('');
+    setTaskFormOpen(true);
   };
 
   const changeStatus = async (t, status) => {
@@ -123,10 +190,6 @@ export default function ProjectPage() {
       setError('');
       await api.delete(`/projects/${id}/tasks/${t._id}`);
       notifyTasksChanged();
-      if (editingId === t._id) {
-        setEditingId(null);
-        setForm(emptyForm);
-      }
       await loadTasks();
     } catch (err) {
       setError(errorMessage(err, 'Could not delete the task.'));
@@ -134,15 +197,17 @@ export default function ProjectPage() {
   };
 
   // ---------- Project ----------
-  const saveProject = async (e) => {
+  const saveProject = async (e, values) => {
     e.preventDefault();
+    setSettingsMsg(null);
     try {
-      setError('');
-      const res = await api.patch(`/projects/${id}`, projectForm);
+      const res = await api.patch(`/projects/${id}`, values);
       setData({ ...data, project: res.data.project });
       setProjectForm(null);
+      setSettingsMsg({ ok: true, text: 'Changes saved.' });
+      notifyProjectsChanged();
     } catch (err) {
-      setError(errorMessage(err, 'Could not save the project.'));
+      setSettingsMsg({ ok: false, text: errorMessage(err, 'Could not save the project.') });
     }
   };
 
@@ -150,9 +215,11 @@ export default function ProjectPage() {
     if (!window.confirm('Delete this project and all its tasks?')) return;
     try {
       await api.delete(`/projects/${id}`);
+      notifyProjectsChanged();
+      notifyTasksChanged();
       navigate('/dashboard');
     } catch (err) {
-      setError(errorMessage(err, 'Could not delete the project.'));
+      setSettingsMsg({ ok: false, text: errorMessage(err, 'Could not delete the project.') });
     }
   };
 
@@ -218,6 +285,8 @@ export default function ProjectPage() {
     if (!window.confirm('Leave this project? Your tasks here will become unassigned.')) return;
     try {
       await api.delete(`/projects/${id}/members/${user._id}`);
+      notifyProjectsChanged();
+      notifyTasksChanged();
       navigate('/dashboard');
     } catch (err) {
       setMemberError(errorMessage(err, 'Could not leave the project.'));
@@ -226,10 +295,11 @@ export default function ProjectPage() {
 
   if (loadError) {
     return (
-      <div style={{ maxWidth: 640, margin: '60px auto', padding: '0 16px' }}>
+      <div className="empty">
+        <FolderIcon />
         <h2>{loadError === 'notFound' ? 'Project not found' : 'Could not load this project'}</h2>
         {loadError === 'failed' && <p>Check your connection and refresh the page.</p>}
-        <Link to="/dashboard">Back to dashboard</Link>
+        <Link className="btn" to="/dashboard">Back to home</Link>
       </div>
     );
   }
@@ -238,147 +308,219 @@ export default function ProjectPage() {
   const { project, role } = data;
   const isOwner = role === 'owner';
   const canManage = (t) => isOwner || t.createdBy === user._id;
+  const settings = projectForm || { name: project.name, description: project.description || '' };
+
+  const TABS = [
+    { value: 'board', label: 'Board' },
+    { value: 'progress', label: 'Progress' },
+    { value: 'members', label: `Members (${project.members.length})` },
+    { value: 'activity', label: 'Activity' },
+    ...(isOwner ? [{ value: 'settings', label: 'Settings' }] : []),
+  ];
 
   return (
-    <div style={{ maxWidth: 960, margin: '40px auto', padding: '0 16px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <Link to="/dashboard">← Back</Link>
-        <NotificationBell />
+    <>
+      <div className="banner" style={{ background: projectGradient(project._id) }} />
+
+      <div className="channel-head">
+        <ProjectMark id={project._id} name={project.name} size={72} radius={36} />
+        <div className="channel-info">
+          <h1>{project.name}</h1>
+          <div className="muted">
+            {isOwner ? 'Owner' : 'Member'} · {project.members.length} member{project.members.length === 1 ? '' : 's'} · {tasks.length} task{tasks.length === 1 ? '' : 's'}
+          </div>
+          {project.description && <p className="muted">{project.description}</p>}
+        </div>
+        <div className="channel-actions">
+          <Link className="btn" to={`/projects/${id}/timeline`}><CalendarIcon size={18} /> Timeline</Link>
+          <button type="button" className="btn btn-primary" onClick={openNewTask}><PlusIcon size={18} /> Add task</button>
+        </div>
       </div>
 
-      {projectForm ? (
-        <form onSubmit={saveProject} style={{ display: 'grid', gap: 8, maxWidth: 480, margin: '16px 0' }}>
-          <input value={projectForm.name} onChange={(e) => setProjectForm({ ...projectForm, name: e.target.value })} maxLength={100} required />
-          <textarea value={projectForm.description} onChange={(e) => setProjectForm({ ...projectForm, description: e.target.value })} placeholder="Description (optional)" maxLength={500} />
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button type="submit">Save</button>
-            <button type="button" onClick={() => setProjectForm(null)}>Cancel</button>
-          </div>
-        </form>
-      ) : (
-        <>
-          <h1 style={{ overflowWrap: 'anywhere' }}>{project.name}</h1>
-          <p style={{ overflowWrap: 'anywhere' }}>{project.description}</p>
-          {isOwner && (
-            <button onClick={() => setProjectForm({ name: project.name, description: project.description || '' })}>
-              Edit project
-            </button>
-          )}
-        </>
-      )}
-
-      <section style={{ margin: '24px 0' }}>
-        <h2>Members ({project.members.length})</h2>
-        <ul style={{ listStyle: 'none', padding: 0, display: 'grid', gap: 6 }}>
-          {project.members.map((m) => (
-            <li key={m.user._id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', overflowWrap: 'anywhere' }}>
-              <span>
-                <strong>{m.user.name}</strong> <small>{m.user.email} · {m.role}</small>
-              </span>
-              {isOwner && m.role !== 'owner' && (
-                <button onClick={() => removeMember(m)} style={{ marginLeft: 'auto' }}>Remove</button>
-              )}
-            </li>
-          ))}
-        </ul>
-        {isOwner && (
-          <form onSubmit={addMember} style={{ display: 'flex', gap: 8, maxWidth: 480 }}>
-            <input
-              type="email"
-              value={memberEmail}
-              onChange={(e) => setMemberEmail(e.target.value)}
-              placeholder="Teammate's Google email"
-              required
-              style={{ flex: 1, minWidth: 0 }}
-            />
-            <button type="submit">Add member</button>
-          </form>
-        )}
-        {isOwner && <p><small>Adding by email only works for people who have signed in to TaskHub before. Otherwise, send them an invite link.</small></p>}
-
-        {isOwner && (
-          <div style={{ border: '1px solid #ddd', borderRadius: 8, padding: 12, maxWidth: 560, margin: '12px 0' }}>
-            <strong>Invite link</strong>
-            <p style={{ margin: '4px 0 8px' }}>
-              <small>Anyone with the link can join as a member for 7 days. Only share it with your team.</small>
-            </p>
-            {invite && (
-              <>
-                <input readOnly value={invite.url} onFocus={(e) => e.target.select()} style={{ width: '100%', boxSizing: 'border-box' }} />
-                <p style={{ margin: '4px 0' }}><small>Expires {new Date(invite.expiresAt).toLocaleString()}</small></p>
-              </>
-            )}
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={generateInvite}>{invite ? 'Generate new link' : 'Generate invite link'}</button>
-              {invite && <button onClick={copyInvite}>Copy link</button>}
-              <button onClick={disableInvite}>Disable links</button>
-            </div>
-            {inviteMsg && <p style={{ margin: '8px 0 0' }}><small>{inviteMsg}</small></p>}
-          </div>
-        )}
-        {!isOwner && <button onClick={leaveProject}>Leave project</button>}
-        {memberError && <p style={{ color: 'crimson' }}>{memberError}</p>}
-      </section>
-
-      <ProjectStats stats={stats} />
-      <p><Link to={`/projects/${id}/timeline`}>View timeline →</Link></p>
-
-      <h2>{editingId ? 'Edit task' : 'New task'}</h2>
-      <form onSubmit={submit} style={{ display: 'grid', gap: 8, maxWidth: 480 }}>
-        <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Task title" maxLength={120} required />
-        <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Description (optional)" maxLength={1000} />
-        <select value={form.assignee} onChange={(e) => setForm({ ...form, assignee: e.target.value })}>
-          <option value="">Unassigned</option>
-          {project.members.map((m) => (
-            <option key={m.user._id} value={m.user._id}>{m.user.name}</option>
-          ))}
-        </select>
-        <input type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} />
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button type="submit">{editingId ? 'Save changes' : 'Add task'}</button>
-          {editingId && (
-            <button type="button" onClick={() => { setEditingId(null); setForm(emptyForm); }}>Cancel</button>
-          )}
-        </div>
-        {error && <p style={{ color: 'crimson' }}>{error}</p>}
-      </form>
-
-      <h2>Tasks</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
-        {STATUSES.map((col) => (
-          <div key={col.value}>
-            <h3>{col.label} ({tasks.filter((t) => t.status === col.value).length})</h3>
-            {tasks.filter((t) => t.status === col.value).map((t) => (
-              <div key={t._id} style={{ border: `1px solid ${isOverdue(t) ? 'crimson' : '#ccc'}`, borderRadius: 8, padding: 10, marginBottom: 8, overflowWrap: 'anywhere' }}>
-                <strong>{t.title}</strong>
-                {t.description && <div>{t.description}</div>}
-                <small>
-                  {t.assignee ? `Assigned to ${t.assignee.name}` : 'Unassigned'}
-                  {t.deadline && ` · Due ${new Date(t.deadline).toLocaleDateString()}`}
-                  {isOverdue(t) && ' · OVERDUE'}
-                </small>
-                <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-                  {(canManage(t) || t.assignee?._id === user._id) && (
-                    <select value={t.status} onChange={(e) => changeStatus(t, e.target.value)}>
-                      {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-                    </select>
-                  )}
-                  {canManage(t) && <button onClick={() => startEdit(t)}>Edit</button>}
-                  {canManage(t) && <button onClick={() => removeTask(t)}>Delete</button>}
-                </div>
-              </div>
-            ))}
-          </div>
+      <div className="tabs" role="tablist" aria-label="Project sections">
+        {TABS.map((t) => (
+          <button
+            key={t.value}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.value}
+            className={`tab${tab === t.value ? ' active' : ''}`}
+            onClick={() => setTab(t.value)}
+          >
+            {t.label}
+          </button>
         ))}
       </div>
 
-      <ActivityPanel activity={activity} error={activityError} />
+      {error && <p className="alert" style={{ marginBottom: 16 }}>{error}</p>}
 
-      {isOwner && (
-        <p style={{ marginTop: 32 }}>
-          <button onClick={removeProject}>Delete project</button>
-        </p>
+      {tab === 'board' && (
+        <div className="board">
+          {STATUSES.map((col) => {
+            const items = tasks.filter((t) => t.status === col.value);
+            return (
+              <div key={col.value} className="column">
+                <div className="column-head">
+                  <span className="dot" style={{ background: col.color }} aria-hidden="true" />
+                  {col.label} <span className="muted" style={{ fontWeight: 400 }}>({items.length})</span>
+                </div>
+                {items.length === 0 && <p className="column-empty">No tasks here.</p>}
+                {items.map((t) => (
+                  <TaskCard
+                    key={t._id}
+                    task={t}
+                    canManage={canManage(t)}
+                    canChangeStatus={t.assignee?._id === user._id}
+                    onStatus={changeStatus}
+                    onEdit={startEdit}
+                    onDelete={removeTask}
+                  />
+                ))}
+              </div>
+            );
+          })}
+        </div>
       )}
-    </div>
+
+      {tab === 'progress' && (
+        <Suspense fallback={<Loading />}>
+          <ProjectStats stats={stats} />
+        </Suspense>
+      )}
+
+      {tab === 'members' && (
+        <div className="two-col">
+          <div className="card">
+            <h2 style={{ marginBottom: 8 }}>Members</h2>
+            <ul>
+              {project.members.map((m) => (
+                <li key={m.user._id} className="row">
+                  <Avatar user={m.user} size={40} />
+                  <div className="row-main">
+                    <div><strong>{m.user.name}</strong></div>
+                    <small className="muted">{m.user.email} · {m.role}</small>
+                  </div>
+                  {isOwner && m.role !== 'owner' && (
+                    <button type="button" className="btn btn-sm" onClick={() => removeMember(m)}>Remove</button>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {!isOwner && (
+              <button type="button" className="btn btn-danger" style={{ marginTop: 12 }} onClick={leaveProject}>Leave project</button>
+            )}
+            {memberError && !isOwner && <p className="alert" style={{ marginTop: 12 }}>{memberError}</p>}
+          </div>
+
+          {isOwner && (
+            <div className="stack">
+              <div className="card">
+                <h2 style={{ marginBottom: 4 }}><LinkIcon size={18} /> Invite link</h2>
+                <p className="muted" style={{ marginBottom: 12 }}>
+                  Anyone with the link can join as a member for 7 days. Only share it with your team.
+                </p>
+                {invite && (
+                  <div style={{ marginBottom: 12 }}>
+                    <input
+                      className="input"
+                      readOnly
+                      value={invite.url}
+                      onFocus={(e) => e.target.select()}
+                      aria-label="Invite link"
+                    />
+                    <small className="muted">Expires {new Date(invite.expiresAt).toLocaleString()}</small>
+                  </div>
+                )}
+                <div className="channel-actions">
+                  <button type="button" className="btn btn-primary" onClick={generateInvite}>{invite ? 'Generate new link' : 'Generate invite link'}</button>
+                  {invite && <button type="button" className="btn" onClick={copyInvite}>Copy link</button>}
+                  <button type="button" className="btn" onClick={disableInvite}>Disable links</button>
+                </div>
+                {inviteMsg && <p className="muted" style={{ marginTop: 8 }}>{inviteMsg}</p>}
+              </div>
+
+              <div className="card">
+                <h2 style={{ marginBottom: 4 }}>Add by email</h2>
+                <p className="muted" style={{ marginBottom: 12 }}>
+                  Only works for people who have signed in to TaskHub before. Otherwise, send an invite link.
+                </p>
+                <form onSubmit={addMember} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <input
+                    className="input"
+                    type="email"
+                    value={memberEmail}
+                    onChange={(e) => setMemberEmail(e.target.value)}
+                    placeholder="Teammate's Google email"
+                    aria-label="Teammate's Google email"
+                    required
+                    style={{ flex: '1 1 200px', minWidth: 0 }}
+                  />
+                  <button type="submit" className="btn">Add member</button>
+                </form>
+                {memberError && <p className="alert" style={{ marginTop: 12 }}>{memberError}</p>}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === 'activity' && <ActivityPanel activity={activity} error={activityError} />}
+
+      {tab === 'settings' && isOwner && (
+        <div className="stack" style={{ maxWidth: 560 }}>
+          <form className="card form" onSubmit={(e) => saveProject(e, settings)}>
+            <h2>Project details</h2>
+            <label className="field">
+              <span>Name</span>
+              <input className="input" value={settings.name} onChange={(e) => setProjectForm({ ...settings, name: e.target.value })} maxLength={100} required />
+            </label>
+            <label className="field">
+              <span>Description (optional)</span>
+              <textarea className="textarea" value={settings.description} onChange={(e) => setProjectForm({ ...settings, description: e.target.value })} maxLength={500} />
+            </label>
+            {settingsMsg && <p className={settingsMsg.ok ? 'notice' : 'alert'}>{settingsMsg.text}</p>}
+            <div className="form-actions"><button type="submit" className="btn btn-primary">Save changes</button></div>
+          </form>
+          <div className="card">
+            <h2 style={{ marginBottom: 4 }}>Delete project</h2>
+            <p className="muted" style={{ marginBottom: 12 }}>This removes the project and all its tasks for everyone. It can't be undone.</p>
+            <button type="button" className="btn btn-danger" onClick={removeProject}><TrashIcon size={18} /> Delete project</button>
+          </div>
+        </div>
+      )}
+
+      {taskFormOpen && (
+        <Modal title={editingId ? 'Edit task' : 'New task'} onClose={closeTaskForm}>
+          <form className="form" onSubmit={submit}>
+            <label className="field">
+              <span>Title</span>
+              <input className="input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={120} required autoFocus />
+            </label>
+            <label className="field">
+              <span>Description (optional)</span>
+              <textarea className="textarea" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={1000} />
+            </label>
+            <label className="field">
+              <span>Assignee</span>
+              <select className="select" value={form.assignee} onChange={(e) => setForm({ ...form, assignee: e.target.value })}>
+                <option value="">Unassigned</option>
+                {project.members.map((m) => (
+                  <option key={m.user._id} value={m.user._id}>{m.user.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Deadline</span>
+              <input className="input" type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} />
+            </label>
+            {formError && <p className="alert">{formError}</p>}
+            <div className="form-actions">
+              <button type="button" className="btn" onClick={closeTaskForm}>Cancel</button>
+              <button type="submit" className="btn btn-primary">{editingId ? 'Save changes' : 'Add task'}</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+    </>
   );
 }
