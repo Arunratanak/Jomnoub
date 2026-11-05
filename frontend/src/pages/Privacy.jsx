@@ -6,7 +6,7 @@ import useTitle from '../utils/useTitle';
 export default function Privacy() {
   useTitle('Privacy policy');
   const contactEmail = 'prak092839351@gmail.com';
-  const lastUpdated = 'November 3, 2026';
+  const lastUpdated = 'November 5, 2026';
 
   return (
     <main className="prose">
@@ -31,8 +31,14 @@ export default function Privacy() {
           identifier. We do not receive your Google password.
         </li>
         <li>
-          <strong>Content you create.</strong> Projects, tasks, descriptions, deadlines,
-          assignments, and team membership that you or your teammates enter in the app.
+          <strong>Email and password accounts.</strong> If you create an account with an
+          email and password, we store your name, email address, and a one-way hash of your
+          password. We never store the password itself.
+        </li>
+        <li>
+          <strong>Content you create.</strong> Projects, tasks, subtasks, descriptions,
+          deadlines, assignments, chat messages, and team membership that you or your
+          teammates enter in the app.
         </li>
         <li>
           <strong>Session cookie.</strong> After you sign in, we store a single secure

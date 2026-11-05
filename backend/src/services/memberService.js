@@ -12,8 +12,10 @@ export const isProjectOwner = (project, userId) =>
 
 // Owner adds someone by email. They must have signed in to TaskHub once.
 export async function addMemberByEmail(project, actor, email) {
-  const user = await User.findOne({ email });
-  if (!user) throw new NotFoundError('No TaskHub user with that email. They need to sign in once first.');
+  // Only Google accounts have a verified email. A password account could have been
+  // registered with someone else's address, so those people join by invite link.
+  const user = await User.findOne({ email, googleId: { $type: 'string' } });
+  if (!user) throw new NotFoundError('No Google-verified TaskHub user with that email. Send them an invite link instead.');
   if (isMember(project, user._id)) throw new ConflictError('That person is already a member');
 
   project.members.push({ user: user._id, role: 'member' });

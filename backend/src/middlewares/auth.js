@@ -9,12 +9,16 @@ export default async function requireAuth(req, res, next) {
   if (typeof token !== 'string' || !token) throw new UnauthorizedError();
 
   let user;
+  let tokenVersion;
   try {
-    user = await User.findById(verifySessionToken(token));
+    const session = verifySessionToken(token);
+    tokenVersion = session.tokenVersion;
+    user = await User.findById(session.id);
   } catch {
     throw new UnauthorizedError(); // bad signature, wrong algorithm, expired, or malformed id
   }
-  if (!user) throw new UnauthorizedError();
+  // A lower version means this session was ended (see tokenVersion in models/User.js)
+  if (!user || tokenVersion !== (user.tokenVersion || 0)) throw new UnauthorizedError();
   req.user = user;
   next();
 }

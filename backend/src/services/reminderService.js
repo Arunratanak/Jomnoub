@@ -60,7 +60,7 @@ export async function runReminders({ dryRun }) {
     deadline: { $ne: null, $lte: dueSoonLimit },
   })
     .select('title deadline assignee project')
-    .populate('assignee', 'name email isDemo')
+    .populate('assignee', 'name email isDemo googleId')
     .populate('project', 'name')
     .lean();
 
@@ -73,6 +73,8 @@ export async function runReminders({ dryRun }) {
     for (const t of tasks) {
       if (!t.assignee?.email || !t.project) { skipped += 1; continue; } // deleted user/project
       if (t.assignee.isDemo) { skipped += 1; continue; } // seed data: fake @example.invalid users
+      // Unverified address (password account): it might not be theirs, so never email it
+      if (!t.assignee.googleId) { skipped += 1; continue; }
 
       const type = t.deadline < today ? 'overdue' : 'due-soon';
       const key = { task: t._id, type, deadline: t.deadline };

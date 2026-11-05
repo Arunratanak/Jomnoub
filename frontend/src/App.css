@@ -472,6 +472,18 @@ details summary { cursor: pointer; color: var(--text-2); font-size: 13px; }
 .center-hero h1 { font-size: 26px; }
 .center-body { display: grid; gap: 14px; justify-items: center; padding: 24px; }
 .corner-action { position: absolute; top: 12px; right: 12px; }
+.auth-tabs { display: grid; grid-template-columns: 1fr 1fr; width: 100%; padding: 4px; border-radius: 10px; background: var(--surface-2); }
+.auth-tab { min-height: 34px; border: 0; border-radius: 8px; background: none; color: var(--text-2); font: inherit; font-weight: 500; cursor: pointer; }
+.auth-tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15); }
+[data-theme='dark'] .auth-tab.active { background: var(--hover); }
+.auth-form { width: 100%; text-align: left; }
+.auth-submit { width: 100%; }
+.password-field { position: relative; }
+.password-field .input { padding-right: 64px; }
+.password-toggle { position: absolute; top: 50%; right: 6px; padding: 4px 8px; border: 0; border-radius: 6px; background: none; color: var(--accent-text); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; transform: translateY(-50%); }
+.password-toggle:hover { background: var(--surface-2); }
+.auth-divider { display: flex; align-items: center; gap: 12px; width: 100%; color: var(--text-2); font-size: 13px; }
+.auth-divider::before, .auth-divider::after { content: ''; flex: 1; border-top: 1px solid var(--border); }
 .feature-list { display: grid; gap: 6px; text-align: left; color: var(--text-2); font-size: 13px; }
 .feature-list li { display: flex; gap: 8px; align-items: center; }
 .feature-list svg { color: var(--accent); flex: none; }
@@ -504,6 +516,7 @@ details summary { cursor: pointer; color: var(--text-2); font-size: 13px; }
 
   .main { padding: calc(var(--topbar-h) + 4px) 12px 80px; }
   .toasts { bottom: 72px; }
+  .center-page { padding-top: 60px; } /* keeps the card clear of the theme button */
   .chat-row { max-width: 92%; }
   /* Keeps the message box on screen: top bar, title, tabs and bottom nav take the rest */
   .chat { height: max(320px, calc(100dvh - 216px)); }

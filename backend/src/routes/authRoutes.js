@@ -1,11 +1,14 @@
 import { Router } from 'express';
 import requireAuth from '../middlewares/auth.js';
+import { passwordLoginEmailLimiter, passwordLoginIpLimiter, registerLimiter } from '../middlewares/rateLimit.js';
 import * as auth from '../controllers/authController.js';
 
 // Mounted at /api/auth (POST /google also has loginLimiter, see app.js)
 const router = Router();
 
 router.post('/google', auth.googleLogin);
+router.post('/register', registerLimiter, auth.register);
+router.post('/login', passwordLoginIpLimiter, passwordLoginEmailLimiter, auth.login);
 router.get('/me', requireAuth, auth.me);
 router.post('/logout', auth.logout);
 

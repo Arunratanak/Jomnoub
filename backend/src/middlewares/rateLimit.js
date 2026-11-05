@@ -22,7 +22,7 @@ function cookieUserKey(req) {
   const token = req.cookies?.[SESSION_COOKIE];
   if (typeof token === 'string' && process.env.JWT_SECRET) {
     try {
-      const id = verifySessionToken(token);
+      const { id } = verifySessionToken(token);
       if (id) return `user:${id}`;
     } catch {
       // invalid or expired token: treat as anonymous
@@ -36,6 +36,18 @@ export const generalLimiter = rateLimit({ ...common, windowMs: 15 * MINUTE, limi
 
 // Google sign-in: 30 attempts per 15 minutes per IP (no user yet at login)
 export const loginLimiter = rateLimit({ ...common, windowMs: 15 * MINUTE, limit: 30, keyGenerator: ipKey });
+
+// Password sign-in: guessing is limited per email from each address, on top of the
+// per-IP limit. Successful sign-ins don't count, so normal use never hits it.
+const emailKey = (req) => {
+  const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+  return `${email}|${ipKey(req)}`;
+};
+export const passwordLoginIpLimiter = rateLimit({ ...common, windowMs: 15 * MINUTE, limit: 30, keyGenerator: ipKey, skipSuccessfulRequests: true });
+export const passwordLoginEmailLimiter = rateLimit({ ...common, windowMs: 15 * MINUTE, limit: 10, keyGenerator: emailKey, skipSuccessfulRequests: true });
+
+// Creating accounts: 20 per hour per IP
+export const registerLimiter = rateLimit({ ...common, windowMs: HOUR, limit: 20, keyGenerator: ipKey });
 
 // Creating and accepting invites share one budget: 30 per 15 minutes per user
 export const inviteLimiter = rateLimit({ ...common, windowMs: 15 * MINUTE, limit: 30, keyGenerator: userKey });

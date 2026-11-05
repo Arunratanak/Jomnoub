@@ -7,11 +7,12 @@ Built as a full-stack course final project.
 ## Features
 
 **Accounts**
-- Google sign-in. The backend verifies Google's ID token and sets an httpOnly session cookie (7 days).
+- Two ways in: **Google sign-in** (the backend verifies Google's ID token) or **email and password** (stored in our database as a salted scrypt hash, never as the password itself). Both end with the same session: a JWT in an httpOnly cookie, valid for 7 days.
+- Email addresses on password accounts aren't verified. If the real owner of an address later signs in with Google, the account is linked to Google, its password is removed and its other sessions end.
 
 **Projects and teams**
 - Create, rename and delete projects. The creator is the owner.
-- Invite teammates with a link (random token, expires after 7 days, one active link per project, can be regenerated or disabled), or add someone by email if they have signed in before.
+- Invite teammates with a link (random token, expires after 7 days, one active link per project, can be regenerated or disabled), or add someone by email if they have signed in with Google before.
 - Owners can remove members; members can leave. Tasks assigned to someone who leaves or is removed become unassigned. The last owner can't be removed.
 
 **Tasks**
@@ -122,12 +123,13 @@ docs/                    SECURITY.md, TEST_PLAN.md, PRESENTATION.md
 
 ## API overview
 
-All routes are under `/api`. Everything requires login except `GET /status`, `POST /auth/google`, `POST /auth/logout`, and `POST /cron/reminders` (which needs `Authorization: Bearer <CRON_SECRET>` instead).
+All routes are under `/api`. Everything requires login except `GET /status`, `POST /auth/google`, `/auth/register`, `/auth/login`, `/auth/logout`, and `POST /cron/reminders` (which needs `Authorization: Bearer <CRON_SECRET>` instead).
 
 | Method and path | Who |
 |---|---|
 | `GET /status` | anyone (health check: server and database state) |
-| `POST /auth/google`, `GET /auth/me`, `POST /auth/logout` | login / current user / logout |
+| `POST /auth/google`, `POST /auth/register`, `POST /auth/login` | sign in with Google, create a password account, sign in with a password |
+| `GET /auth/me`, `POST /auth/logout` | current user / log out |
 | `GET /projects`, `POST /projects` | your projects / create one |
 | `GET /projects/:projectId` | members |
 | `PATCH`, `DELETE /projects/:projectId` | owner |
@@ -222,6 +224,7 @@ Vite builds these into the public JavaScript, so they must never contain secrets
 - **Roles.** A project has exactly one owner; there is no way to promote a member or transfer ownership.
 - **Chat isn't instant.** It checks for new messages every 5 seconds while open (no WebSockets), has no file attachments, and tracks "unread" per browser, not per account.
 - **Suggestions aren't emailed.** The owner sees them in the app only.
+- **Password accounts have no email verification, password reset or change-password yet.** Those would need email delivery beyond Resend's test sender. Until then, password accounts join projects by invite link only and don't receive reminder emails. Someone who forgets their password can recover the account only by signing in with Google using the same address.
 - **Sessions.** Logging out clears the cookie, but an already-issued token stays valid until it expires (7 days); there is no server-side session revocation.
 - **Rate limits are in memory.** They reset when the backend restarts or sleeps, and would not be shared across multiple server instances.
 - **Reminders** are daily only, and a crash between claiming and sending a reminder can lose that one reminder (it is never sent twice).

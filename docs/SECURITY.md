@@ -7,11 +7,15 @@ Each row lists what the measure does, where it is implemented, and how to show i
 | Measure | Where | How to demonstrate |
 |---|---|---|
 | Google sign-in verified on the server: signature, audience (our client ID) and `email_verified` | `backend/src/services/authService.js` (`verifyGoogleCredential`) | Sign in normally. Then send a fake token: `POST /api/auth/google` with `{"credential":"fake"}` returns **401 Invalid Google token**. |
+| Passwords are stored only as a salted **scrypt** hash, and the hash is excluded from queries and API responses | `backend/src/services/passwordService.js`, `backend/src/models/User.js` (`select: false`, `toJSON`) | Open the `users` collection in Atlas: `passwordHash` starts with `scrypt$` and two accounts with the same password have different hashes. |
+| Sign-in gives the same error, in similar time, for an unknown email, a wrong password and a Google-only account | `backend/src/services/authService.js` (`loginWithPassword`), `passwordService.js` (`fakeVerify`) | Try a wrong password and an unknown email: both say **Incorrect email or password**. |
+| Password guessing is limited: 10 failed tries per email from an address and 30 per IP, per 15 minutes | `backend/src/middlewares/rateLimit.js`, `backend/src/routes/authRoutes.js` | Enter a wrong password 11 times: the app shows "You're doing that too often". |
+| Unverified emails can't be misused: Google sign-in on the same address removes the password and ends other sessions; password accounts can't be added by email and don't get reminder emails | `authService.js` (`upsertGoogleUser`), `backend/src/services/memberService.js`, `backend/src/services/reminderService.js`, `backend/src/middlewares/auth.js` (`tokenVersion`) | Register with an address you own, sign in with Google on it, then try the old password: refused. |
 | Session in an **httpOnly** cookie (JavaScript can't read it), `Secure` in production, `SameSite=Lax`, 7-day expiry | `backend/src/config/auth.js` (`cookieOptions`) | DevTools > Application > Cookies: `token` shows HttpOnly, Secure, SameSite Lax. In the Console, `document.cookie` does not show it. |
 | `SameSite=Lax` blocks cross-site request forgery: another website can't make your browser join a project, log you out, or regenerate an invite link | `backend/src/config/auth.js` | Explain: the frontend calls the API through the same-origin `/api` rewrite, so Lax costs nothing and cross-site POSTs arrive without the cookie. |
 | JWT signed and verified with HS256 only (other algorithms rejected), 7-day expiry | `backend/src/config/auth.js` (`JWT_ALGORITHM`), `backend/src/services/authService.js` (`signSessionToken`, `verifySessionToken`) | Code walkthrough. |
 | Logout clears the cookie with the same options it was set with | `backend/src/controllers/authController.js` (`logout`), `config/auth.js` (`clearCookieOptions`) | Log out, refresh: you stay on the login page. |
-| Every route needs login except `/api/status`, `/api/auth/google`, `/api/auth/logout` and the cron route | `backend/src/routes/*Routes.js` (`router.use(requireAuth)`), `backend/src/middlewares/auth.js` | Logged out, open `https://<site>/api/projects`: **401 Not authenticated**. |
+| Every route needs login except `/api/status`, `/api/auth/google`, `/register`, `/login`, `/logout` and the cron route | `backend/src/routes/*Routes.js` (`router.use(requireAuth)`), `backend/src/middlewares/auth.js` | Logged out, open `https://<site>/api/projects`: **401 Not authenticated**. |
 
 ## Authorization (who can see and change what)
 
@@ -75,6 +79,7 @@ Each row lists what the measure does, where it is implemented, and how to show i
 These are not implemented. Mention them honestly if asked.
 
 - Logout doesn't revoke an issued token; it stays valid until it expires (7 days).
+- Password accounts have no email verification, password reset or change-password. The sign-up form reveals whether an email already has an account.
 - Rate limits are in memory: they reset on restart and aren't shared between instances.
 - No Content Security Policy headers on the static frontend (helmet covers only the API responses).
 - `backend/.env` was committed in the repo's first commits and pushed to the public repository. The history has been rewritten to remove it, but anyone could have copied it before that, so the database password and JWT secret it contained must be rotated. Removing a file from history doesn't undo an exposure.

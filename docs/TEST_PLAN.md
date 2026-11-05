@@ -145,7 +145,26 @@ Do this with B back in a project owned by A.
 | 11.13 | B: hover over A's message, then B's own | Only B's own message has a delete icon |
 | 11.14 | Outsider: open `<site>/api/projects/<id>/messages` | `{"error":"Not found"}` |
 
-## 12. Cleanup
+## 12. Email and password accounts
+
+Use a private window and an email address you own.
+
+| # | Step | Expected |
+|---|---|---|
+| 12.1 | Create account with a password under 8 characters | The form stops you |
+| 12.2 | Create account with a valid password | You land on Home, signed in |
+| 12.3 | Refresh, then log out and refresh | Still signed in, then still logged out |
+| 12.4 | Sign in with a wrong password | "Incorrect email or password" |
+| 12.5 | Sign in with an unknown email | The same message |
+| 12.6 | Create another account with the same email | "An account with this email already exists" |
+| 12.7 | Sign in with the right password | You land on Home |
+| 12.8 | MongoDB Atlas > `users`: find the account | `passwordHash` starts with `scrypt$`; the password appears nowhere |
+| 12.9 | Open an invite link while logged out, sign in with the password | You return to the invite and can join |
+| 12.10 | Owner: Members tab > Add by email with that address | Refused, with a suggestion to send an invite link |
+| 12.11 | Enter a wrong password 11 times | "You're doing that too often" |
+| 12.12 | Only if the address is a Google account: Sign in with Google, then try the old password | Same account as before; the password no longer works |
+
+## 13. Cleanup
 
 - A: delete "Test project" and "Private project" (Settings tab > Delete project on each).
 - If you used demo data: `npm run seed:clear` in `backend`.
