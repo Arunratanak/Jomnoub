@@ -8,7 +8,8 @@ Built as a full-stack course final project.
 
 **Accounts**
 - Two ways in: **Google sign-in** (the backend verifies Google's ID token) or **email and password** (stored in our database as a salted scrypt hash, never as the password itself). Both end with the same session: a JWT in an httpOnly cookie, valid for 7 days.
-- Email addresses on password accounts aren't verified. If the real owner of an address later signs in with Google, the account is linked to Google, its password is removed and its other sessions end.
+- **Email verification and password reset:** sign-up sends a link to confirm the address (valid 24 hours), and "Forgot password?" sends a reset link (valid 1 hour). Links work once, and only a hash of each token is stored. A reset ends the account's other sessions.
+- Until a password account verifies its address, it can only join projects by invite link and gets no reminder emails. If the real owner of an address signs in with Google before then, the account is linked to Google, its password is removed and its other sessions end.
 
 **Projects and teams**
 - Create, rename and delete projects. The creator is the owner.
@@ -99,7 +100,7 @@ backend/
     validations/         zod schemas for every request body/query, ObjectId check
     dto/                 response shapes (project list item, invite preview)
     exceptions/          HttpError classes (NotFound, Forbidden, ...) turned into JSON by errorHandler
-    models/              Mongoose models: User, Project, Task, Message, Invite, Activity, ReminderLog
+    models/              Mongoose models: User, EmailToken, Project, Task, Message, Invite, Activity, ReminderLog
     data/                demo content used by the seed script
 
 Request flow: route -> middlewares (auth, membership, rate limit) -> controller
@@ -108,7 +109,8 @@ HttpError subclasses; middlewares/errorHandler.js sends them as { "error": "..."
 (There is no uploads/ folder: TaskHub has no file uploads.)
 
 frontend/
-  src/pages/             Login, Dashboard, ProjectPage, TimelinePage, MyTasks, InvitePage, Privacy
+  src/pages/             Login, ForgotPassword, ResetPassword, VerifyEmail, Dashboard, ProjectPage,
+                         TimelinePage, MyTasks, InvitePage, Privacy
   src/App.css            design tokens (light/dark colors) and all shared styles
   src/components/        Layout (top bar, sidebar), ProtectedRoute, ProjectStats, ActivityPanel,
                          ChatPanel, TaskCard, TaskDetail, NotificationBell, ThemeToggle, Modal,
@@ -123,12 +125,14 @@ docs/                    SECURITY.md, TEST_PLAN.md, PRESENTATION.md
 
 ## API overview
 
-All routes are under `/api`. Everything requires login except `GET /status`, `POST /auth/google`, `/auth/register`, `/auth/login`, `/auth/logout`, and `POST /cron/reminders` (which needs `Authorization: Bearer <CRON_SECRET>` instead).
+All routes are under `/api`. Everything requires login except `GET /status`, `POST /auth/google`, `/auth/register`, `/auth/login`, `/auth/verify-email`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/logout`, and `POST /cron/reminders` (which needs `Authorization: Bearer <CRON_SECRET>` instead).
 
 | Method and path | Who |
 |---|---|
 | `GET /status` | anyone (health check: server and database state) |
 | `POST /auth/google`, `POST /auth/register`, `POST /auth/login` | sign in with Google, create a password account, sign in with a password |
+| `POST /auth/verify-email`, `POST /auth/resend-verification` | confirm an address with an emailed link / send a new link (logged in) |
+| `POST /auth/forgot-password`, `POST /auth/reset-password` | email a reset link / set a new password with it |
 | `GET /auth/me`, `POST /auth/logout` | current user / log out |
 | `GET /projects`, `POST /projects` | your projects / create one |
 | `GET /projects/:projectId` | members |
@@ -218,13 +222,13 @@ Vite builds these into the public JavaScript, so they must never contain secrets
 ## Known limitations
 
 - **Free-tier cold starts.** The Render backend sleeps when idle; the first request can take 30 to 60 seconds. The app shows "Waking up the server..." after 4 seconds, and the reminder workflow retries.
-- **Resend test sender.** With the default `onboarding@resend.dev` sender, Resend only delivers to the email address of the Resend account owner. Emailing teammates needs a verified domain and `EMAIL_FROM` on that domain.
+- **Email needs a verified domain.** With the default `onboarding@resend.dev` sender, Resend only delivers to the email address of the Resend account owner. Reminders, verification and password reset need a domain verified in Resend, with `EMAIL_FROM` set to an address on it.
 - **Push notifications are not implemented.** The bell is in-app only and updates on page load, window focus and after your own changes; there is no real-time push (no WebSockets, no browser push).
 - **No automated test suite in the repository.** The features were tested with scripts run outside the repo and with the manual plan in [docs/TEST_PLAN.md](docs/TEST_PLAN.md).
 - **Roles.** A project has exactly one owner; there is no way to promote a member or transfer ownership.
 - **Chat isn't instant.** It checks for new messages every 5 seconds while open (no WebSockets), has no file attachments, and tracks "unread" per browser, not per account.
 - **Suggestions aren't emailed.** The owner sees them in the app only.
-- **Password accounts have no email verification, password reset or change-password yet.** Those would need email delivery beyond Resend's test sender. Until then, password accounts join projects by invite link only and don't receive reminder emails. Someone who forgets their password can recover the account only by signing in with Google using the same address.
+- **No change-password page yet.** To change a password while signed in, use "Forgot password?". There's also no way yet to change the account's email or delete the account.
 - **Sessions.** Logging out clears the cookie, but an already-issued token stays valid until it expires (7 days); there is no server-side session revocation.
 - **Rate limits are in memory.** They reset when the backend restarts or sleeps, and would not be shared across multiple server instances.
 - **Reminders** are daily only, and a crash between claiming and sending a reminder can lose that one reminder (it is never sent twice).

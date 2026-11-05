@@ -1,4 +1,4 @@
-import User from '../models/User.js';
+import User, { VERIFIED_EMAIL_FILTER } from '../models/User.js';
 import Task from '../models/Task.js';
 import { logActivity } from './activityService.js';
 import { populateMembers } from './projectService.js';
@@ -12,10 +12,10 @@ export const isProjectOwner = (project, userId) =>
 
 // Owner adds someone by email. They must have signed in to TaskHub once.
 export async function addMemberByEmail(project, actor, email) {
-  // Only Google accounts have a verified email. A password account could have been
-  // registered with someone else's address, so those people join by invite link.
-  const user = await User.findOne({ email, googleId: { $type: 'string' } });
-  if (!user) throw new NotFoundError('No Google-verified TaskHub user with that email. Send them an invite link instead.');
+  // Unverified password accounts could have been registered with someone else's
+  // address, so they join by invite link until they've verified it.
+  const user = await User.findOne({ email, ...VERIFIED_EMAIL_FILTER });
+  if (!user) throw new NotFoundError('No verified TaskHub user with that email. Send them an invite link instead.');
   if (isMember(project, user._id)) throw new ConflictError('That person is already a member');
 
   project.members.push({ user: user._id, role: 'member' });

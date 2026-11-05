@@ -24,9 +24,9 @@ export async function verifyGoogleCredential(credential) {
 
 // Creates the user on first sign-in, refreshes name/email/picture afterwards.
 // If a password account already uses this email, Google has just proved who really
-// owns the address, so it's linked. Password accounts aren't email-verified, so
-// someone else could have created it: the password is removed and any existing
-// sessions end, which locks out anyone who registered with this person's email.
+// owns the address, so it's linked. If that account was never email-verified, someone
+// else could have created it: the password is removed and any existing sessions end,
+// which locks out anyone who registered with this person's email.
 export async function upsertGoogleUser(payload) {
   const email = payload.email.toLowerCase();
   const profile = { name: payload.name || email, picture: payload.picture };
@@ -43,7 +43,8 @@ export async function upsertGoogleUser(payload) {
   if (user) {
     user.googleId = payload.sub;
     Object.assign(user, profile);
-    if (user.passwordHash) {
+    // A password set by someone who has proved they own this email is kept
+    if (user.passwordHash && !user.emailVerified) {
       user.passwordHash = undefined;
       user.tokenVersion += 1;
     }

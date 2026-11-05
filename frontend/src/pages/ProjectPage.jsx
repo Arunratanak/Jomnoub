@@ -576,7 +576,7 @@ export default function ProjectPage() {
               <div className="card">
                 <h2 style={{ marginBottom: 4 }}>Add by email</h2>
                 <p className="muted" style={{ marginBottom: 12 }}>
-                  Only works for people who have signed in with Google before. Anyone else can join with an invite link.
+                  Only works for people whose TaskHub email is verified. Anyone else can join with an invite link.
                 </p>
                 <form onSubmit={addMember} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <input

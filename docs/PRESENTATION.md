@@ -76,7 +76,7 @@
 |---|---|
 | How does sign-in work? | Two ways: Google, where the server verifies Google's signed ID token, or email and password, stored as a salted scrypt hash. Both end with the same JWT in an httpOnly cookie. |
 | How are passwords stored? | Never as the password: a salted scrypt hash, which is deliberately slow to guess. It's excluded from queries and responses, and guessing is rate limited. |
-| What if someone registers with another person's email? | There's no email verification yet, so the account gets no trust: it can't be added by email and gets no reminders. If the real owner signs in with Google, the password is removed and other sessions end. |
+| What if someone registers with another person's email? | Until the address is verified by an emailed link, the account can't be added by email and gets no reminders. If the real owner resets the password or signs in with Google, whoever registered it is locked out. |
 | Where is the session stored? | In a signed JWT inside an httpOnly, SameSite=Lax cookie (Secure in production). JavaScript can't read it, and other sites can't make the browser send it on cross-site POSTs. |
 | How do you stop one user seeing another team's project? | Every project route runs `requireMember`, which looks the project up with the current user as a member. Non-members get the same 404 as a missing project. Task queries are always scoped to that verified project. |
 | What stops someone guessing invite links? | 32 random bytes (about 256 bits), so guessing is impossible. Only a hash is stored, links expire after 7 days, and the owner can regenerate or disable them. |

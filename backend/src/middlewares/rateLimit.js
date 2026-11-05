@@ -46,6 +46,14 @@ const emailKey = (req) => {
 export const passwordLoginIpLimiter = rateLimit({ ...common, windowMs: 15 * MINUTE, limit: 30, keyGenerator: ipKey, skipSuccessfulRequests: true });
 export const passwordLoginEmailLimiter = rateLimit({ ...common, windowMs: 15 * MINUTE, limit: 10, keyGenerator: emailKey, skipSuccessfulRequests: true });
 
+// Emails cost quota and can annoy people, so requests that send one are tightly limited
+export const forgotEmailLimiter = rateLimit({ ...common, windowMs: HOUR, limit: 3, keyGenerator: emailKey });
+export const forgotIpLimiter = rateLimit({ ...common, windowMs: HOUR, limit: 20, keyGenerator: ipKey });
+export const resendVerificationLimiter = rateLimit({ ...common, windowMs: HOUR, limit: 3, keyGenerator: userKey });
+
+// Using a link from an email. Tokens can't be guessed; this just stops scripted abuse.
+export const emailLinkLimiter = rateLimit({ ...common, windowMs: 15 * MINUTE, limit: 30, keyGenerator: ipKey });
+
 // Creating accounts: 20 per hour per IP
 export const registerLimiter = rateLimit({ ...common, windowMs: HOUR, limit: 20, keyGenerator: ipKey });
 

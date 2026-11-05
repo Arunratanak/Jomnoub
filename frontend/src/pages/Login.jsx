@@ -4,6 +4,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 import Loading from '../components/Loading';
 import { LogoMark } from '../components/Logo';
+import PasswordInput from '../components/PasswordInput';
 import ThemeToggle from '../components/ThemeToggle';
 import { useTheme } from '../utils/theme';
 import useTitle from '../utils/useTitle';
@@ -32,7 +33,6 @@ export default function Login() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const from = safePath(location.state?.from);
@@ -92,29 +92,15 @@ export default function Login() {
               </label>
               <label className="field">
                 <span>Password</span>
-                <div className="password-field">
-                  <input
-                    className="input"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    minLength={isRegister ? MIN_PASSWORD : undefined}
-                    maxLength={128}
-                    autoComplete={isRegister ? 'new-password' : 'current-password'}
-                    required
-                  />
-                  <button
-                    type="button"
-                    className="password-toggle"
-                    onClick={() => setShowPassword((s) => !s)}
-                    aria-pressed={showPassword}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? 'Hide' : 'Show'}
-                  </button>
-                </div>
-                {isRegister && <small className="muted">At least {MIN_PASSWORD} characters. There's no password reset yet, so keep it safe.</small>}
+                <PasswordInput
+                  value={password}
+                  onChange={setPassword}
+                  minLength={isRegister ? MIN_PASSWORD : undefined}
+                  autoComplete={isRegister ? 'new-password' : 'current-password'}
+                />
+                {isRegister && <small className="muted">At least {MIN_PASSWORD} characters.</small>}
               </label>
+              {!isRegister && <small className="forgot-link"><Link to="/forgot-password">Forgot password?</Link></small>}
               {error && <p className="alert" role="alert">{error}</p>}
               <button type="submit" className="btn btn-primary auth-submit" disabled={submitting}>
                 {submitting ? 'Please wait...' : isRegister ? 'Create account' : 'Sign in'}

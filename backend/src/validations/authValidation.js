@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
 const email = z.string().trim().toLowerCase().max(254).pipe(z.email());
+// No trimming: spaces are allowed in passwords. The maximum stops huge inputs
+// from tying up the deliberately slow hashing.
+const newPassword = z.string().min(8).max(128);
+const emailLinkToken = z.string().min(20).max(100);
 
 // Google ID tokens are about 1-2 KB
 export const googleLoginSchema = z.object({ credential: z.string().min(1).max(4096) });
@@ -8,12 +12,14 @@ export const googleLoginSchema = z.object({ credential: z.string().min(1).max(40
 export const registerSchema = z.object({
   name: z.string().trim().min(1).max(60),
   email,
-  // No trimming: spaces are allowed in passwords. The maximum stops huge inputs
-  // from tying up the deliberately slow hashing.
-  password: z.string().min(8).max(128),
+  password: newPassword,
 });
 
 export const passwordLoginSchema = z.object({
   email,
   password: z.string().min(1).max(128),
 });
+
+export const verifyEmailSchema = z.object({ token: emailLinkToken });
+export const forgotPasswordSchema = z.object({ email });
+export const resetPasswordSchema = z.object({ token: emailLinkToken, password: newPassword });

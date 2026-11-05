@@ -160,7 +160,12 @@ Use a private window and an email address you own.
 | 12.7 | Sign in with the right password | You land on Home |
 | 12.8 | MongoDB Atlas > `users`: find the account | `passwordHash` starts with `scrypt$`; the password appears nowhere |
 | 12.9 | Open an invite link while logged out, sign in with the password | You return to the invite and can join |
-| 12.10 | Owner: Members tab > Add by email with that address | Refused, with a suggestion to send an invite link |
+| 12.10 | Before verifying, owner: Members tab > Add by email with that address | Refused, with a suggestion to send an invite link |
+| 12.10a | Check that inbox for "Verify your TaskHub email" and click the link | "Your email is verified"; the banner disappears |
+| 12.10b | Click the same link again | "Couldn't verify your email" |
+| 12.10c | Sign in page > Forgot password?, enter the address, open the email | The link opens the page for choosing a new password |
+| 12.10d | Set a new password; check another signed-in browser | You're signed in; the other browser is signed out; the old password fails |
+| 12.10e | Forgot password? with an address that has no account | The same message; no email arrives |
 | 12.11 | Enter a wrong password 11 times | "You're doing that too often" |
 | 12.12 | Only if the address is a Google account: Sign in with Google, then try the old password | Same account as before; the password no longer works |
 

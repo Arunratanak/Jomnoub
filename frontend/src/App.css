@@ -144,7 +144,7 @@ ul { margin: 0; padding: 0; list-style: none; }
   display: grid; justify-items: center; gap: 8px;
   padding: 56px 16px; text-align: center; color: var(--text-2);
 }
-.empty svg { width: 48px; height: 48px; color: var(--text-2); }
+.empty > svg { width: 48px; height: 48px; color: var(--text-2); }
 .empty h2 { color: var(--text); }
 
 .loading { display: grid; justify-items: center; gap: 12px; padding: 72px 16px; text-align: center; color: var(--text-2); }
@@ -478,6 +478,7 @@ details summary { cursor: pointer; color: var(--text-2); font-size: 13px; }
 [data-theme='dark'] .auth-tab.active { background: var(--hover); }
 .auth-form { width: 100%; text-align: left; }
 .auth-submit { width: 100%; }
+.forgot-link { margin-top: -8px; text-align: right; }
 .password-field { position: relative; }
 .password-field .input { padding-right: 64px; }
 .password-toggle { position: absolute; top: 50%; right: 6px; padding: 4px 8px; border: 0; border-radius: 6px; background: none; color: var(--accent-text); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; transform: translateY(-50%); }

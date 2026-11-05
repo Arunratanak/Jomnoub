@@ -8,6 +8,9 @@ import ProjectPage from "./pages/ProjectPage";
 import MyTasks from "./pages/MyTasks";
 import InvitePage from "./pages/InvitePage";
 import TimelinePage from "./pages/TimelinePage";
+import VerifyEmail from "./pages/VerifyEmail";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 // A fresh ProjectPage per project, so switching in the sidebar never shows stale data
 function ProjectRoute() {
@@ -20,6 +23,9 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/privacy" element={<Privacy />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route
         path="/invite/:token"
         element={

@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useNavigate, useSearchParams } from 'react-route
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { PROJECTS_CHANGED } from '../utils/events';
+import { toast } from '../utils/feedback';
 import useClickOutside from '../utils/useClickOutside';
 import Avatar, { ProjectMark } from './Avatar';
 import Logo from './Logo';
@@ -46,6 +47,44 @@ function UserMenu() {
           <button type="button" className="menu-item" onClick={logout}><LogoutIcon size={20} /> Log out</button>
         </div>
       )}
+    </div>
+  );
+}
+
+// Reminds password accounts to verify their email. Rechecks on focus, because the
+// link is usually opened in another tab.
+function VerifyEmailBanner() {
+  const { user, refreshUser } = useAuth();
+  const [sending, setSending] = useState(false);
+  const unverified = !user.emailVerified;
+
+  useEffect(() => {
+    if (!unverified) return undefined;
+    window.addEventListener('focus', refreshUser);
+    return () => window.removeEventListener('focus', refreshUser);
+  }, [unverified, refreshUser]);
+
+  if (!unverified) return null;
+
+  const resend = async () => {
+    setSending(true);
+    try {
+      await api.post('/auth/resend-verification');
+      toast('Verification email sent. Check your inbox and spam folder.');
+    } catch (err) {
+      toast(err.response?.data?.error || 'Could not send the email. Please try again.', 'error');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="notice notice-row">
+      <span>
+        <strong>Please verify your email.</strong> We sent a link to {user.email}. Until then, you won't get reminders
+        and can only join projects by invite link.
+      </span>
+      <button type="button" className="btn btn-sm" onClick={resend} disabled={sending}>{sending ? 'Sending...' : 'Resend email'}</button>
     </div>
   );
 }
@@ -159,7 +198,10 @@ export default function Layout() {
       </nav>
 
       <main className="main">
-        <div className="main-inner"><Outlet /></div>
+        <div className="main-inner">
+          <VerifyEmailBanner />
+          <Outlet />
+        </div>
       </main>
 
       <nav className="bottom-nav" aria-label="Quick links">

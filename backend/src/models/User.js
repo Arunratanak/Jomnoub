@@ -11,6 +11,8 @@ const userSchema = new mongoose.Schema(
     // Only for email + password accounts. A scrypt hash, never the password.
     // select: false keeps it out of every query unless explicitly requested.
     passwordHash: { type: String, select: false },
+    // True once a password account has used a link sent to this address
+    emailVerified: { type: Boolean, default: false },
     // Part of the session JWT. Increasing it ends all of this user's sessions.
     tokenVersion: { type: Number, default: 0 },
     // Fake teammates created by scripts/seed.js. They can't sign in and the
@@ -25,8 +27,13 @@ const userSchema = new mongoose.Schema(
 userSchema.index({ googleId: 1 }, { unique: true, partialFilterExpression: { googleId: { $type: 'string' } } });
 userSchema.index({ email: 1 }, { unique: true });
 
+// Verified by Google or by a link we emailed. Works on documents and lean objects.
+export const hasVerifiedEmail = (user) => Boolean(user?.googleId || user?.emailVerified);
+export const VERIFIED_EMAIL_FILTER = { $or: [{ googleId: { $type: 'string' } }, { emailVerified: true }] };
+
 userSchema.set('toJSON', {
   transform: (doc, ret) => {
+    ret.emailVerified = hasVerifiedEmail(ret);
     delete ret.googleId;
     delete ret.passwordHash;
     delete ret.tokenVersion;

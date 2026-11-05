@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import api from '../api/client';
 import { SESSION_EXPIRED } from '../utils/feedback';
 
@@ -22,6 +22,16 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener(SESSION_EXPIRED, onExpired);
   }, []);
 
+  // Reloads the user, e.g. after their email was verified
+  const refreshUser = useCallback(async () => {
+    try {
+      const res = await api.get('/auth/me');
+      setUser(res.data.user);
+    } catch {
+      setUser(null);
+    }
+  }, []);
+
   const loginWithGoogle = async (credential) => {
     const res = await api.post('/auth/google', { credential });
     setUser(res.data.user);
@@ -43,7 +53,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, loginWithGoogle, loginWithPassword, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, loginWithGoogle, loginWithPassword, register, logout, refreshUser, setSessionUser: setUser }}>
       {children}
     </AuthContext.Provider>
   );
