@@ -55,13 +55,13 @@ export async function sendVerificationEmail(user) {
   const token = await issueToken(user, 'verify-email', VERIFY_HOURS);
   await sendEmail({
     to: user.email,
-    subject: 'Verify your TaskHub email',
+    subject: 'Verify your Jomnoub email',
     ...actionEmail({
       name: user.name,
       intro: 'Please confirm this is your email address so you can get reminders and be added to projects.',
       button: 'Verify my email',
       link: linkFor('verify-email', token),
-      outro: `This link expires in ${VERIFY_HOURS} hours. If you didn't create a TaskHub account, you can ignore this email.`,
+      outro: `This link expires in ${VERIFY_HOURS} hours. If you didn't create a Jomnoub account, you can ignore this email.`,
     }),
   });
 }
@@ -83,10 +83,10 @@ export async function sendPasswordResetEmail(email) {
   const token = await issueToken(user, 'reset-password', RESET_HOURS);
   await sendEmail({
     to: user.email,
-    subject: 'Reset your TaskHub password',
+    subject: 'Reset your Jomnoub password',
     ...actionEmail({
       name: user.name,
-      intro: 'Someone asked to reset the password for your TaskHub account. If that was you, choose a new one here.',
+      intro: 'Someone asked to reset the password for your Jomnoub account. If that was you, choose a new one here.',
       button: 'Reset my password',
       link: linkFor('reset-password', token),
       outro: `This link expires in ${RESET_HOURS} hour. If you didn't ask for this, you can ignore this email and your password won't change.`,

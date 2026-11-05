@@ -1,8 +1,8 @@
 // Small global helpers shown by components/FeedbackHost.jsx
 
-export const TOAST_EVENT = 'taskhub:toast';
-export const CONFIRM_EVENT = 'taskhub:confirm';
-export const SESSION_EXPIRED = 'taskhub:session-expired';
+export const TOAST_EVENT = 'jomnoub:toast';
+export const CONFIRM_EVENT = 'jomnoub:confirm';
+export const SESSION_EXPIRED = 'jomnoub:session-expired';
 
 // A short message at the bottom of the screen: toast('Saved') or toast('Failed', 'error')
 export function toast(message, type = 'success') {

@@ -1,6 +1,6 @@
 import { Resend } from 'resend';
 
-const DEFAULT_FROM = 'TaskHub <onboarding@resend.dev>';
+const DEFAULT_FROM = 'Jomnoub <onboarding@resend.dev>';
 let client = null;
 
 function getClient() {

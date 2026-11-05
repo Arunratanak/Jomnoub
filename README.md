@@ -1,6 +1,6 @@
-# TaskHub
+# Jomnoub
 
-TaskHub is a project management web app for student group work. Sign in with Google, create a project, invite teammates with a link, assign tasks with deadlines, and follow progress with charts, a timeline, an activity log and daily email reminders.
+Jomnoub is a project management web app for student group work. Sign in with Google, create a project, invite teammates with a link, assign tasks with deadlines, and follow progress with charts, a timeline, an activity log and daily email reminders.
 
 Built as a full-stack course final project.
 
@@ -106,7 +106,7 @@ backend/
 Request flow: route -> middlewares (auth, membership, rate limit) -> controller
 (validates with zod) -> service (rules + database) -> JSON response. Services throw
 HttpError subclasses; middlewares/errorHandler.js sends them as { "error": "..." }.
-(There is no uploads/ folder: TaskHub has no file uploads.)
+(There is no uploads/ folder: Jomnoub has no file uploads.)
 
 frontend/
   src/pages/             Login, ForgotPassword, ResetPassword, VerifyEmail, Dashboard, ProjectPage,
@@ -189,7 +189,7 @@ Names only. Real values live in `.env` files (git-ignored) and in the Render / G
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID (verifies sign-in tokens) |
 | `RESEND_API_KEY` | Resend API key for reminder emails |
 | `CRON_SECRET` | Shared secret the reminder job must send |
-| `EMAIL_FROM` | Optional sender, defaults to `TaskHub <onboarding@resend.dev>` |
+| `EMAIL_FROM` | Optional sender, defaults to `Jomnoub <onboarding@resend.dev>` |
 | `SEED_EMAIL` | Optional, only for `npm run seed` |
 
 The server prints a warning at startup naming any missing reminder variables (never their values).

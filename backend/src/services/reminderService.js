@@ -16,7 +16,7 @@ export function buildReminderEmail(name, overdue, dueSoon) {
   const parts = [];
   if (overdue.length) parts.push(`${overdue.length} overdue`);
   if (dueSoon.length) parts.push(`${dueSoon.length} due soon`);
-  const subject = `TaskHub: ${parts.join(', ')}`;
+  const subject = `Jomnoub: ${parts.join(', ')}`;
   const link = `${process.env.FRONTEND_URL}/my-tasks`;
 
   const textSection = (title, items) =>
@@ -42,7 +42,7 @@ export function buildReminderEmail(name, overdue, dueSoon) {
     `<p>Hi ${escapeHtml(name)},</p>` +
     htmlSection('Overdue', '#b91c1c', overdue) +
     htmlSection('Due soon', '#1d4ed8', dueSoon) +
-    `<p><a href="${escapeHtml(link)}">See all your tasks in TaskHub</a></p>`;
+    `<p><a href="${escapeHtml(link)}">See all your tasks in Jomnoub</a></p>`;
 
   return { subject, text, html };
 }

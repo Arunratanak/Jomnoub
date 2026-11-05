@@ -11,7 +11,7 @@ import NotificationBell from './NotificationBell';
 import ThemeToggle from './ThemeToggle';
 import { CloseIcon, HomeIcon, LogoutIcon, MenuIcon, SearchIcon, TasksIcon } from './Icons';
 
-const COLLAPSE_KEY = 'taskhub-sidebar-collapsed';
+const COLLAPSE_KEY = 'jomnoub-sidebar-collapsed';
 const navClass = ({ isActive }) => `nav-item${isActive ? ' active' : ''}`;
 
 function readCollapsed() {
@@ -145,7 +145,7 @@ export default function Layout() {
       <header className="topbar">
         <div className="topbar-start">
           <button type="button" className="icon-btn" onClick={toggleMenu} aria-label="Toggle menu"><MenuIcon /></button>
-          <Link to="/dashboard" className="logo" aria-label="TaskHub home"><Logo /></Link>
+          <Link to="/dashboard" className="logo" aria-label="Jomnoub home"><Logo /></Link>
         </div>
 
         <form className={`search${searchOpen ? ' open' : ''}`} role="search" onSubmit={submitSearch}>

@@ -10,12 +10,12 @@ export const isMember = (project, userId) => project.members.some((m) => m.user.
 export const isProjectOwner = (project, userId) =>
   project.members.some((m) => m.role === 'owner' && m.user.equals(userId));
 
-// Owner adds someone by email. They must have signed in to TaskHub once.
+// Owner adds someone by email. They must have signed in to Jomnoub once.
 export async function addMemberByEmail(project, actor, email) {
   // Unverified password accounts could have been registered with someone else's
   // address, so they join by invite link until they've verified it.
   const user = await User.findOne({ email, ...VERIFIED_EMAIL_FILTER });
-  if (!user) throw new NotFoundError('No verified TaskHub user with that email. Send them an invite link instead.');
+  if (!user) throw new NotFoundError('No verified Jomnoub user with that email. Send them an invite link instead.');
   if (isMember(project, user._id)) throw new ConflictError('That person is already a member');
 
   project.members.push({ user: user._id, role: 'member' });

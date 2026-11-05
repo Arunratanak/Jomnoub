@@ -2,7 +2,7 @@
 
 export const DEMO_PROJECT = {
   name: 'Demo project',
-  description: 'Sample data for the TaskHub demo. Remove it with npm run seed:clear.',
+  description: 'Sample data for the Jomnoub demo. Remove it with npm run seed:clear.',
 };
 
 // Task title -> [subtask title, note, done]

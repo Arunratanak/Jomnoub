@@ -68,7 +68,7 @@ export default function Login() {
         <div className="center-card">
           <div className="center-hero">
             <LogoMark size={56} inverse />
-            <h1>TaskHub</h1>
+            <h1>Jomnoub</h1>
             <p>Organize and track your group work.</p>
           </div>
           <div className="center-body">

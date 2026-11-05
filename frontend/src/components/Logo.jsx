@@ -1,4 +1,4 @@
-// The TaskHub mark: a green rounded square with a check
+// The Jomnoub mark: a green rounded square with a check
 // (inverse: white square with a green check, for use on green backgrounds)
 export function LogoMark({ size = 28, inverse = false }) {
   return (
@@ -13,7 +13,7 @@ export default function Logo() {
   return (
     <>
       <LogoMark />
-      <span className="logo-text">TaskHub</span>
+      <span className="logo-text">Jomnoub</span>
     </>
   );
 }

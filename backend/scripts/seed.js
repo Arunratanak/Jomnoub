@@ -61,7 +61,7 @@ async function seed() {
   const email = process.env.SEED_EMAIL?.trim().toLowerCase();
   if (!email) fail('SEED_EMAIL is not set. Add SEED_EMAIL=<your Google email> to backend/.env.');
   const me = await User.findOne({ email, isDemo: false });
-  if (!me) fail('No TaskHub user has the SEED_EMAIL address. Sign in to TaskHub once with that Google account, then run this again.');
+  if (!me) fail('No Jomnoub user has the SEED_EMAIL address. Sign in to Jomnoub once with that Google account, then run this again.');
 
   const cleared = await clearDemo(); // re-running replaces the old demo data instead of duplicating it
 

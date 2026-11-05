@@ -11,14 +11,14 @@ export default function Privacy() {
   return (
     <main className="prose">
       <div className="prose-head">
-        <Link to="/dashboard" className="logo" aria-label="TaskHub home"><Logo /></Link>
+        <Link to="/dashboard" className="logo" aria-label="Jomnoub home"><Logo /></Link>
         <ThemeToggle />
       </div>
-      <h1>TaskHub Privacy Policy</h1>
+      <h1>Jomnoub Privacy Policy</h1>
       <p><em>Last updated: {lastUpdated}</em></p>
 
       <p>
-        TaskHub is a project management tool for organizing group work: assigning tasks,
+        Jomnoub is a project management tool for organizing group work: assigning tasks,
         tracking deadlines, and following progress. This page explains what information
         the app collects and how it is used.
       </p>

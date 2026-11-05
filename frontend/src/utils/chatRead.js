@@ -1,6 +1,6 @@
 // Remembers, per project and in this browser only, the newest chat message seen.
 // Message ids sort by time, so comparing the id strings tells which is newer.
-const key = (projectId) => `taskhub-chat-read-${projectId}`;
+const key = (projectId) => `jomnoub-chat-read-${projectId}`;
 
 export function getLastRead(projectId) {
   try {

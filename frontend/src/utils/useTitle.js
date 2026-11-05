@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 
-// Sets the browser tab title, e.g. "My tasks · TaskHub"
+// Sets the browser tab title, e.g. "My tasks · Jomnoub"
 export default function useTitle(title) {
   useEffect(() => {
-    document.title = title ? `${title} · TaskHub` : 'TaskHub';
+    document.title = title ? `${title} · Jomnoub` : 'Jomnoub';
   }, [title]);
 }

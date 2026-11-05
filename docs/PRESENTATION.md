@@ -1,4 +1,4 @@
-# TaskHub presentation plan (5 to 8 minutes)
+# Jomnoub presentation plan (5 to 8 minutes)
 
 ## Before you present (15 minutes ahead)
 
@@ -12,7 +12,7 @@
 
 | Time | Section | Slides |
 |---|---|---|
-| 0:00 to 0:45 | Problem and what TaskHub is | 1, 2 |
+| 0:00 to 0:45 | Problem and what Jomnoub is | 1, 2 |
 | 0:45 to 1:30 | Architecture | 3 |
 | 1:30 to 5:00 | Live demo | (browser) |
 | 5:00 to 6:15 | Security, including the live security demo | 4 |
@@ -21,8 +21,8 @@
 
 ## Slides
 
-1. **Title:** TaskHub, project management for student group work. Name, course, live URL.
-2. **The problem:** group projects lose track of who does what and when. TaskHub: projects, invite links, tasks with assignees and deadlines, progress tracking, daily email reminders.
+1. **Title:** Jomnoub, project management for student group work. Name, course, live URL.
+2. **The problem:** group projects lose track of who does what and when. Jomnoub: projects, invite links, tasks with assignees and deadlines, progress tracking, daily email reminders.
 3. **Architecture:** the ASCII diagram from the README (browser, Render static site with `/api` rewrite, Express API, MongoDB Atlas, Google OAuth, Resend, GitHub Actions). Tech stack in one line under it.
 4. **Security:** five bullets: Google sign-in verified on the server; httpOnly SameSite=Lax cookie; every project route checks membership (404 for outsiders); hashed, expiring invite tokens; zod validation and rate limiting.
 5. **What I learned:** for example the cookie and cross-site issues that led to the same-origin `/api` rewrite; case-sensitive imports on Linux; a secret committed by accident and what it took to fix (rewrite history and rotate).
@@ -31,7 +31,7 @@
 
 ## What to say (short script)
 
-**Slides 1 and 2 (45 s):** "Group projects usually fail on coordination, not ability: nobody knows who is doing what, or what's due. TaskHub puts a project, its tasks, deadlines and teammates in one place, and reminds people by email before things are late."
+**Slides 1 and 2 (45 s):** "Group projects usually fail on coordination, not ability: nobody knows who is doing what, or what's due. Jomnoub puts a project, its tasks, deadlines and teammates in one place, and reminds people by email before things are late."
 
 **Slide 3 (45 s):** "The React frontend is a static site on Render. It forwards everything under `/api` to my Express backend, so the browser only ever talks to one domain, which keeps the login cookie simple and safe. Data is in MongoDB Atlas, sign-in is Google, and once a day GitHub Actions calls a protected endpoint that sends reminder emails through Resend."
 

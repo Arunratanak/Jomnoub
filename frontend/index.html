@@ -4,12 +4,12 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TaskHub</title>
+    <title>Jomnoub</title>
     <!-- Apply the saved theme before the first paint, so dark mode doesn't flash white -->
     <script>
       (function () {
         var theme = null;
-        try { theme = localStorage.getItem('taskhub-theme'); } catch (e) {}
+        try { theme = localStorage.getItem('jomnoub-theme'); } catch (e) {}
         if (theme !== 'light' && theme !== 'dark') {
           theme = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }

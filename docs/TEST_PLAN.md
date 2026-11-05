@@ -1,6 +1,6 @@
-# TaskHub manual test plan
+# Jomnoub manual test plan
 
-A step-by-step script for testing TaskHub with two Google accounts. It takes about 25 minutes. Run it on the live site (or locally on `http://localhost:5173`) before a demo or after a deploy.
+A step-by-step script for testing Jomnoub with two Google accounts. It takes about 25 minutes. Run it on the live site (or locally on `http://localhost:5173`) before a demo or after a deploy.
 
 ## Setup
 
@@ -119,7 +119,7 @@ After the test, wait 15 minutes (or restart the backend locally) before signing 
 | 10.2 | Dry run (PowerShell, replace the secret): `Invoke-RestMethod -Method Post -Uri "https://<backend>.onrender.com/api/cron/reminders?dryRun=true" -Headers @{ Authorization = "Bearer <CRON_SECRET>" }` | `ok: True, dryRun: True`, `emails` at least 1; nothing is sent |
 | 10.3 | Same command without the header | **401 Unauthorized** |
 | 10.4 | GitHub > Actions > Daily task reminders > Run workflow | Green; the log's last line shows `"emails":1` (or more) |
-| 10.5 | Check A's inbox (and spam) | "TaskHub: N overdue, M due soon" with sections and a link to My Tasks |
+| 10.5 | Check A's inbox (and spam) | "Jomnoub: N overdue, M due soon" with sections and a link to My Tasks |
 | 10.6 | Run the workflow again | Green, `"emails":0`: the same reminder is never sent twice |
 
 Note: with the default `onboarding@resend.dev` sender, only the Resend account owner's address receives email. Reminders for B will show as `failures` unless a domain is verified.
@@ -161,7 +161,7 @@ Use a private window and an email address you own.
 | 12.8 | MongoDB Atlas > `users`: find the account | `passwordHash` starts with `scrypt$`; the password appears nowhere |
 | 12.9 | Open an invite link while logged out, sign in with the password | You return to the invite and can join |
 | 12.10 | Before verifying, owner: Members tab > Add by email with that address | Refused, with a suggestion to send an invite link |
-| 12.10a | Check that inbox for "Verify your TaskHub email" and click the link | "Your email is verified"; the banner disappears |
+| 12.10a | Check that inbox for "Verify your Jomnoub email" and click the link | "Your email is verified"; the banner disappears |
 | 12.10b | Click the same link again | "Couldn't verify your email" |
 | 12.10c | Sign in page > Forgot password?, enter the address, open the email | The link opens the page for choosing a new password |
 | 12.10d | Set a new password; check another signed-in browser | You're signed in; the other browser is signed out; the old password fails |

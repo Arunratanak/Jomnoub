@@ -57,7 +57,7 @@ export default function VerifyEmail() {
             <LogoMark size={48} />
             <h2>{status === 'done' ? 'Your email is verified' : "Couldn't verify your email"}</h2>
             <p className="muted">{status === 'done' ? 'You can now get reminders and be added to projects by email.' : message}</p>
-            <Link className="btn btn-primary" to={user ? '/dashboard' : '/login'}>{user ? 'Go to TaskHub' : 'Sign in'}</Link>
+            <Link className="btn btn-primary" to={user ? '/dashboard' : '/login'}>{user ? 'Go to Jomnoub' : 'Sign in'}</Link>
           </div>
         </div>
       )}

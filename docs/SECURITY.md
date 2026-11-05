@@ -1,4 +1,4 @@
-# TaskHub security measures
+# Jomnoub security measures
 
 Each row lists what the measure does, where it is implemented, and how to show it in a demo. Paths are relative to the repo root. "Two accounts" means two different Google accounts in two browser windows (one normal, one private).
 

@@ -2,8 +2,8 @@ import { useCallback, useSyncExternalStore } from 'react';
 
 // The theme lives on <html data-theme="..."> (set before first paint by the script
 // in index.html). This hook keeps every toggle and the Google button in sync with it.
-const KEY = 'taskhub-theme';
-const CHANGED = 'taskhub:theme-changed';
+const KEY = 'jomnoub-theme';
+const CHANGED = 'jomnoub:theme-changed';
 
 const read = () => document.documentElement.getAttribute('data-theme') || 'light';
 
