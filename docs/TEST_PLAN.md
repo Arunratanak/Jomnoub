@@ -228,7 +228,18 @@ Use the same two accounts, A (owner) and B (member).
 | 15.11 | Hover over a task card, then click an empty part of it | The card lifts and its title turns green; pressing pushes it down; letting go opens the task |
 | 15.12 | Click Attach, Start, Edit or Delete on a card | Each does its own job and does not open the task |
 
-## 16. Cleanup
+## 16. Deleting tasks
+
+| # | Step | Expected |
+|---|---|---|
+| 16.1 | B: look at a task assigned to B, even if A created it | It has a Delete button, and deleting it works |
+| 16.2 | B: create a task with nobody assigned | B can delete it |
+| 16.3 | B: create a task assigned to another member | B can no longer delete it |
+| 16.4 | B: look at a task assigned to someone else | No Delete button |
+| 16.5 | B: suggest a task for the owner | B can delete it to withdraw the suggestion |
+| 16.6 | A (owner): look at any task | A can delete it |
+
+## 17. Cleanup
 
 - A: delete "Test project" and "Private project" (Settings tab > Delete project on each).
 - If you used demo data: `npm run seed:clear` in `backend`.

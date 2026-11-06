@@ -493,6 +493,8 @@ export default function ProjectPage() {
   const settings = projectForm || { name: project.name, description: project.description || '' };
   const ownerMember = project.members.find((m) => m.role === 'owner');
   const personOf = (t) => taskPerson(t, ownerMember?.user);
+  // Same rule as the server: the owner can delete anything; a member only their own
+  const canDelete = (t) => isOwner || (t.assignee ? isAssignee(t) : t.createdBy === user._id);
   const membersSorted = [...project.members].sort((a, b) => (a.role === b.role ? 0 : a.role === 'owner' ? -1 : 1));
   const pendingSuggestions = tasks.filter((t) => t.suggestedBy);
   const detailTask = tasks.find((t) => t._id === detailId);
@@ -622,6 +624,7 @@ export default function ProjectPage() {
                   onFileAdded={onFileAdded}
                   isOwner={isOwner}
                   canManage={canManage(t)}
+                  canDelete={canDelete(t)}
                   canChangeStatus={canMove(t)}
                   draggable={canMove(t)}
                   justMoved={movedId === t._id}

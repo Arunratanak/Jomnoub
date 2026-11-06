@@ -18,7 +18,7 @@ Built as a full-stack course final project.
 
 **Tasks**
 - Title, description, status (To do / In progress / Done), deadline and assignee. The assignee must be a project member.
-- The owner or the task's creator can edit and delete a task. Only the person assigned to a task can change its status; with nobody assigned, the owner or creator can.
+- The owner or the task's creator can edit a task. The owner can delete any task; a member can delete their own, meaning one assigned to them or one they created that nobody else has been given. Only the person assigned to a task can change its status; with nobody assigned, the owner or creator can.
 - **Assign to all:** a new task can go to everyone, which creates a separate copy for each member so each person tracks their own.
 - **Suggestions:** members can't assign work to the owner. Choosing the owner creates a suggestion: the card shows the owner's name with "waiting to accept", and nobody can move it until the owner accepts or declines. Accepting makes the owner the assignee; declining leaves it unassigned.
 - **Subtasks:** each task can have up to 50 subtasks with notes and a done checkbox. The owner, the task's creator and its assignee can change them; other members can read them.
@@ -149,7 +149,7 @@ All routes are under `/api`. Everything requires login except `GET /status`, `PO
 | `DELETE /projects/:projectId/members/:userId` | owner (remove), or the member themselves (leave) |
 | `POST`, `DELETE /projects/:projectId/invites` | owner (generate / disable link) |
 | `POST /projects/:projectId/tasks/assign-all` | members (a task for each member) |
-| `GET`, `POST /projects/:projectId/tasks`, `PATCH`, `DELETE .../tasks/:taskId` | members (edit/delete: owner or creator; status: also assignee) |
+| `GET`, `POST /projects/:projectId/tasks`, `PATCH`, `DELETE .../tasks/:taskId` | members (edit: owner or creator; delete: owner, the assignee, or the creator if nobody else is assigned; status: also assignee) |
 | `POST .../tasks/:taskId/suggestion/accept`, `/decline` | owner |
 | `POST .../tasks/:taskId/subtasks`, `PATCH`, `DELETE .../subtasks/:subtaskId` | owner, the task's creator, or its assignee |
 | `GET`, `POST .../tasks/:taskId/attachments`, `GET .../attachments/:attachmentId/download` | members |

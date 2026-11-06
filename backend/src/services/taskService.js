@@ -38,6 +38,11 @@ const notifyAssigned = ({ project, user, task }) =>
 // Owner of the project, or whoever created the task
 export const canManageTask = (role, task, userId) => role === 'owner' || task.createdBy.equals(userId);
 
+// The owner can delete any task. A member can delete their own: one assigned to them, or
+// one they created that nobody else has been given.
+const canDeleteTask = (role, task, userId) =>
+  role === 'owner' || (task.assignee ? task.assignee.equals(userId) : task.createdBy.equals(userId));
+
 // A task's stage belongs to the person doing it. With nobody assigned, its owner or
 // creator can move it. A pending suggestion has to be accepted first.
 function requireCanMove(role, task, userId) {
@@ -171,7 +176,7 @@ export async function updateTask({ project, role, user, task }, updates) {
 }
 
 export async function deleteTask({ project, role, user, task }) {
-  if (!canManageTask(role, task, user._id)) throw new ForbiddenError('Not allowed');
+  if (!canDeleteTask(role, task, user._id)) throw new ForbiddenError('You can only delete your own tasks');
   await deleteTaskAttachments(task._id);
   await deleteTaskComments(task._id);
   await task.deleteOne();
