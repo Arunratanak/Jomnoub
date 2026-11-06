@@ -22,6 +22,17 @@ export const DEMO_SUBTASKS = {
 // Task title -> teammate key: waits for the owner to accept or decline
 export const DEMO_SUGGESTIONS = { 'Write the README': 'alex' };
 
+// Task title -> comments, oldest first: [author key, text, keys of people mentioned]
+export const DEMO_COMMENTS = {
+  'Add dashboard charts': [
+    ['alex', 'Should the workload chart count finished tasks too?', []],
+    ['jordan', 'I think so. @Sam Demo can you check the numbers once it is done?', ['sam']],
+  ],
+  'Prepare presentation slides': [
+    ['sam', '@me I can review the slides before the rehearsal.', ['me']],
+  ],
+};
+
 // Chat history, oldest first: [author key, text]
 export const DEMO_MESSAGES = [
   ['me', 'Hi everyone, welcome to the project! Please check your tasks on the board.'],

@@ -16,10 +16,12 @@ import Invite from '../src/models/Invite.js';
 import ReminderLog from '../src/models/ReminderLog.js';
 import { quote } from '../src/services/activityService.js';
 import Message from '../src/models/Message.js';
+import Comment from '../src/models/Comment.js';
+import Notification from '../src/models/Notification.js';
 import { deleteProjectAttachments } from '../src/services/attachmentService.js';
 import {
   DEMO_PROJECT, DEMO_TEAMMATES as TEAMMATES, DEMO_TASKS as TASKS,
-  DEMO_SUBTASKS, DEMO_SUGGESTIONS, DEMO_MESSAGES,
+  DEMO_COMMENTS, DEMO_SUBTASKS, DEMO_SUGGESTIONS, DEMO_MESSAGES,
 } from '../src/data/demoData.js';
 
 const args = process.argv.slice(2);
@@ -48,6 +50,8 @@ async function clearDemo() {
     tasks: (await Task.deleteMany({ project: { $in: demoProjectIds } })).deletedCount,
     activity: (await Activity.deleteMany({ $or: [{ project: { $in: demoProjectIds } }, { actor: { $in: demoUserIds } }] })).deletedCount,
     invites: (await Invite.deleteMany({ project: { $in: demoProjectIds } })).deletedCount,
+    comments: (await Comment.deleteMany({ $or: [{ project: { $in: demoProjectIds } }, { author: { $in: demoUserIds } }] })).deletedCount,
+    notifications: (await Notification.deleteMany({ $or: [{ project: { $in: demoProjectIds } }, { actor: { $in: demoUserIds } }, { user: { $in: demoUserIds } }] })).deletedCount,
     messages: (await Message.deleteMany({ $or: [{ project: { $in: demoProjectIds } }, { author: { $in: demoUserIds } }] })).deletedCount,
     projects: (await Project.deleteMany({ _id: { $in: demoProjectIds } })).deletedCount,
   };
@@ -112,6 +116,27 @@ async function seed() {
     events.map((e, i) => ({ ...e, project: project._id, createdAt: new Date(start + i * step) }))
   );
 
+  // Comments, with mentions written the way the app stores them
+  let commentTotal = 0;
+  for (const [title, comments] of Object.entries(DEMO_COMMENTS)) {
+    const task = tasks.find((t) => t.title === title);
+    for (const [i, [who, text, mentioned]] of comments.entries()) {
+      const createdAt = new Date(Date.now() - DAY + i * 60 * 60 * 1000);
+      const body = text.replace('@me', `@${me.name}`);
+      const comment = await Comment.create({
+        project: project._id, task: task._id, author: people[who]._id, text: body, mentions: mentioned.map((key) => people[key]._id), createdAt,
+      });
+      commentTotal += 1;
+      if (mentioned.includes('me')) {
+        await Notification.create({
+          user: me._id, actor: people[who]._id, type: 'mention', message: `mentioned you on ${quote(title)}`, detail: body,
+          project: project._id, task: task._id, comment: comment._id, createdAt,
+        });
+      }
+    }
+    await Task.updateOne({ _id: task._id }, { commentCount: comments.length });
+  }
+
   const chatStart = Date.now() - 2 * DAY;
   await Message.insertMany(
     DEMO_MESSAGES.map(([who, text], i) => ({
@@ -136,7 +161,7 @@ Demo data created
   Tasks:        ${tasks.length} (${Object.entries(byStatus).map(([k, v]) => `${v} ${k}`).join(', ')})
                 ${overdue} overdue, ${dueThisWeek} due within 7 days, ${tasks.filter((t) => !t.assignee).length} unassigned
   Activity:     ${events.length} entries over the last 12 days
-  Chat:         ${DEMO_MESSAGES.length} messages, plus subtasks and 1 suggestion waiting for you
+  Chat:         ${DEMO_MESSAGES.length} messages, ${commentTotal} task comments, subtasks and 1 suggestion waiting for you
 
 Remove it any time with: npm run seed:clear`);
 }

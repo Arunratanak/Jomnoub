@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import loadTask from '../middlewares/loadTask.js';
-import { createTaskLimiter, uploadLimiter } from '../middlewares/rateLimit.js';
+import { commentLimiter, createTaskLimiter, uploadLimiter } from '../middlewares/rateLimit.js';
+import * as comments from '../controllers/commentController.js';
 import * as tasks from '../controllers/taskController.js';
 import * as attachments from '../controllers/attachmentController.js';
 
@@ -18,6 +19,10 @@ router.post('/:taskId/suggestion/decline', loadTask, tasks.declineSuggestion);
 router.post('/:taskId/subtasks', loadTask, tasks.addSubtask);
 router.patch('/:taskId/subtasks/:subtaskId', loadTask, tasks.updateSubtask);
 router.delete('/:taskId/subtasks/:subtaskId', loadTask, tasks.removeSubtask);
+
+router.get('/:taskId/comments', loadTask, comments.list);
+router.post('/:taskId/comments', commentLimiter, loadTask, comments.create);
+router.delete('/:taskId/comments/:commentId', loadTask, comments.remove);
 
 router.get('/:taskId/attachments', loadTask, attachments.list);
 router.post('/:taskId/attachments', uploadLimiter, loadTask, attachments.upload);

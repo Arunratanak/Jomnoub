@@ -1,6 +1,7 @@
 import Invite, { INVITE_TTL_MS, hashToken, newToken } from '../models/Invite.js';
 import Project from '../models/Project.js';
-import { logActivity } from './activityService.js';
+import { logActivity, quote } from './activityService.js';
+import { notify } from './notificationService.js';
 import { NotFoundError } from '../exceptions/HttpError.js';
 
 const INVALID_INVITE = 'This invite link is invalid or has expired.';
@@ -34,6 +35,10 @@ export async function acceptInvite(project, user) {
     { $push: { members: { user: user._id, role: 'member' } } }
   );
   // Only log a real join, not a second click by an existing member
-  if (result.modifiedCount === 1) await logActivity(project._id, user._id, 'joined via invite link');
+  if (result.modifiedCount === 1) {
+    await logActivity(project._id, user._id, 'joined via invite link');
+    const owners = project.members.filter((m) => m.role === 'owner').map((m) => m.user);
+    await notify(owners, { actor: user._id, type: 'member-joined', message: `joined ${quote(project.name)}`, project: project._id });
+  }
   return project.id;
 }

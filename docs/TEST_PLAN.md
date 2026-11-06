@@ -34,7 +34,7 @@ Sign A back in before continuing.
 | 2.4 | A: add a task named `<img src=x onerror=alert(1)>` | Shown as plain text; no alert pops up |
 | 2.5 | A: change a task's status to In progress | It moves column; Activity shows "moved ... from To do to In progress" |
 | 2.6 | A: click the bell | Badge shows 2 (the overdue and the tomorrow task, both assigned to A); dropdown lists them |
-| 2.7 | A: click "Timeline" | Overdue group first, then dates, then No deadline |
+| 2.7 | A: open the Timeline tab | Overdue group first, then dates, then No deadline |
 
 ## 3. Invite flow
 
@@ -64,7 +64,7 @@ Sign A back in before continuing.
 | 5.1 | A: create a second project "Private project" and copy its URL | |
 | 5.2 | B: open that URL | **"Project not found"** (same page as a project that doesn't exist) |
 | 5.3 | B: open the URL with one character of the id changed | Same "Project not found" |
-| 5.4 | B: open `.../timeline` for that project | Same "Project not found" |
+| 5.4 | B: open `.../timeline` for that project | It redirects to the Timeline tab, then the same "Project not found" |
 
 ## 6. Assignee rule
 
@@ -185,7 +185,29 @@ Use a private window and an email address you own.
 | 13.9 | Delete the task | Its files are gone from the bucket in the Cloudflare R2 dashboard |
 | 13.10 | Upload a file of about 9 MB on the live site | It uploads and downloads intact |
 
-## 14. Cleanup
+## 14. Comments, mentions, notifications and the Timeline tab
+
+Use two accounts in the same project (A in a normal window, B in a private window).
+
+| # | Step | Expected |
+|---|---|---|
+| 14.1 | A: Timeline tab, click Comment on a task, type `@` and part of B's name | A list of matching members appears; arrows and Enter pick one |
+| 14.2 | A: finish the comment and press Enter | "Comment posted"; the button shows the new count |
+| 14.3 | B: within 30 seconds, or on switching back to the window | The bell's number goes up; the panel shows "mentioned you" with the comment |
+| 14.4 | B: click that notification | The task opens with the comment highlighted and @B marked; the number goes down |
+| 14.5 | B: reply using Shift+Enter for a second line | The reply appears at once, keeping the line break |
+| 14.6 | A: open the bell | "commented on" with B's reply |
+| 14.7 | B: try to delete A's comment, then their own | No delete button on A's; their own is removed |
+| 14.8 | A: delete B's comment; close the task | It's removed; the card's count goes down |
+| 14.9 | Post `<img src=x onerror=alert(1)>` | It shows as plain text and no alert appears |
+| 14.10 | A: assign a new task to B | B's bell shows "assigned you to", and clicking it opens the task without a refresh |
+| 14.11 | A: delete that task; B: click the notification | "That task no longer exists." |
+| 14.12 | B: click Mark all as read, then refresh | Unread dots stay gone; tasks needing attention still count |
+| 14.13 | On the Timeline tab: change a status, attach a file, tick Show completed, use a filter | Each works without leaving the tab |
+| 14.14 | Open a task, press the browser's Back button; copy a task's address into a new tab | Back closes it; the address opens that task |
+| 14.15 | Open an old `/projects/<id>/timeline` link | It goes to the Timeline tab |
+
+## 15. Cleanup
 
 - A: delete "Test project" and "Private project" (Settings tab > Delete project on each).
 - If you used demo data: `npm run seed:clear` in `backend`.

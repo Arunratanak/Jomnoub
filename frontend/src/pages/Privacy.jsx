@@ -37,8 +37,8 @@ export default function Privacy() {
         </li>
         <li>
           <strong>Content you create.</strong> Projects, tasks, subtasks, descriptions,
-          deadlines, assignments, chat messages, uploaded files, and team membership that you or your
-          teammates enter in the app.
+          deadlines, assignments, comments, chat messages, uploaded files, and team membership that you or your
+          teammates enter in the app. We also keep in-app notifications about this activity for up to 90 days.
         </li>
         <li>
           <strong>Session cookie.</strong> After you sign in, we store a single secure
@@ -63,8 +63,8 @@ export default function Privacy() {
 
       <h2>Where your data is stored</h2>
       <p>
-        Your data is stored in a MongoDB Atlas database. The app is hosted on Vercel
-        (frontend) and Render (backend), and reminder emails are sent through Resend.
+        Your data is stored in a MongoDB Atlas database, and uploaded files in Cloudflare R2.
+        The app is hosted on Render, and emails are sent through Resend.
         These providers process data only to run the service.
       </p>
 

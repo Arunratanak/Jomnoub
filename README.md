@@ -21,6 +21,7 @@ Built as a full-stack course final project.
 - The owner or the task's creator can edit and delete a task; its assignee can change only its status.
 - **Suggestions:** members can't assign work to the owner. Choosing the owner creates a suggestion, and the task stays unassigned until the owner accepts or declines it (on the board, in My Tasks, or from the bell).
 - **Subtasks:** each task can have up to 50 subtasks with notes and a done checkbox. The owner, the task's creator and its assignee can change them; other members can read them.
+- **Comments and @mentions:** any member can comment on a task. Typing `@` lists the project's members, and the mentioned person is notified. The task's assignee, creator and earlier commenters are told about new comments. Authors can delete their own comments and the owner can delete any. A task's address includes `?task=<id>`, so tasks can be linked to directly.
 - **Attachments:** members can add documents, spreadsheets, slides, images and zip files to a task (up to 10 MB each, 20 per task, 500 MB per project and 1 GB per person). Files are stored in a private Cloudflare R2 bucket, and every download goes through the API's membership checks. Without R2 settings, they go in the database instead, which suits local development.
 - Board view with three status columns, filters (assigned to me, overdue, unassigned, suggestions) and drag and drop; overdue tasks are highlighted.
 
@@ -29,10 +30,10 @@ Built as a full-stack course final project.
 
 **Tracking**
 - **Progress stats** per project: completion %, counts by status, overdue, due this week, and a workload chart per member (Recharts).
-- **Timeline** (`/projects/:id/timeline`): tasks grouped as Overdue, then by deadline date, then No deadline.
+- **Timeline tab**: tasks grouped as Overdue, then by deadline date, then No deadline. Each task can be opened, commented on (with @mentions), given files or moved to another status right there, and the board's filters apply.
 - **Activity log**: the last 30 events in a project (task created, moved, assigned, deleted; member joined, added, removed, left).
 - **My Tasks**: everything assigned to you across projects, soonest deadline first.
-- **Notification bell**: count of your unfinished tasks that are overdue or due within 2 days, plus suggestions waiting for you. It refreshes when the page loads, when the window regains focus, and after you change a task. No polling.
+- **Notification bell**: an inbox for assignments, @mentions, comments on your tasks, completed tasks, suggestion decisions and membership changes, each linking to the exact task or comment, with read/unread and "Mark all as read". Below that, unfinished tasks that are overdue or due within 2 days and suggestions waiting for you. It checks every 30 seconds while the page is visible, when the window regains focus, and after you change a task. Notifications are deleted after 90 days.
 
 **Email reminders**
 - Once a day, a GitHub Actions workflow calls the backend, which emails each person one summary of their unfinished tasks that are overdue or due within 2 days (via Resend). The same reminder is never sent twice.
@@ -111,7 +112,7 @@ HttpError subclasses; middlewares/errorHandler.js sends them as { "error": "..."
 
 frontend/
   src/pages/             Login, ForgotPassword, ResetPassword, VerifyEmail, Dashboard, ProjectPage,
-                         TimelinePage, MyTasks, InvitePage, Privacy
+                         MyTasks, InvitePage, Privacy
   src/App.css            design tokens (light/dark colors) and all shared styles
   src/components/        Layout (top bar, sidebar), ProtectedRoute, ProjectStats, ActivityPanel,
                          ChatPanel, TaskCard, TaskDetail, NotificationBell, ThemeToggle, Modal,
@@ -147,6 +148,9 @@ All routes are under `/api`. Everything requires login except `GET /status`, `PO
 | `POST .../tasks/:taskId/subtasks`, `PATCH`, `DELETE .../subtasks/:subtaskId` | owner, the task's creator, or its assignee |
 | `GET`, `POST .../tasks/:taskId/attachments`, `GET .../attachments/:attachmentId/download` | members |
 | `DELETE .../tasks/:taskId/attachments/:attachmentId` | the uploader, the task's creator, or the owner |
+| `GET`, `POST .../tasks/:taskId/comments` | members |
+| `DELETE .../tasks/:taskId/comments/:commentId` | the author or the owner |
+| `GET /api/notifications`, `POST /api/notifications/read-all`, `POST /api/notifications/:notificationId/read` | signed in; only your own notifications |
 | `GET`, `POST /projects/:projectId/messages`, `DELETE .../messages/:messageId` | members (delete: author or owner) |
 | `GET /invites/:token`, `POST /invites/:token/accept` | any logged-in user with a valid link |
 | `GET /my-tasks` | your assigned tasks |
@@ -227,7 +231,7 @@ Vite builds these into the public JavaScript, so they must never contain secrets
 
 - **Free-tier cold starts.** The Render backend sleeps when idle; the first request can take 30 to 60 seconds. The app shows "Waking up the server..." after 4 seconds, and the reminder workflow retries.
 - **Email needs a verified domain.** With the default `onboarding@resend.dev` sender, Resend only delivers to the email address of the Resend account owner. Reminders, verification and password reset need a domain verified in Resend, with `EMAIL_FROM` set to an address on it.
-- **Push notifications are not implemented.** The bell is in-app only and updates on page load, window focus and after your own changes; there is no real-time push (no WebSockets, no browser push).
+- **Push notifications are not implemented.** The bell is in-app only and checks every 30 seconds, on window focus and after your own changes; there is no real-time push (no WebSockets, no browser push), and notifications are not emailed.
 - **No automated test suite in the repository.** The features were tested with scripts run outside the repo and with the manual plan in [docs/TEST_PLAN.md](docs/TEST_PLAN.md).
 - **Roles.** A project has exactly one owner; there is no way to promote a member or transfer ownership.
 - **Chat isn't instant.** It checks for new messages every 5 seconds while open (no WebSockets), has no file attachments, and tracks "unread" per browser, not per account.

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import api from '../api/client';
 import AttachmentPanel from './AttachmentPanel';
 import Avatar from './Avatar';
+import CommentList from './CommentList';
 import Modal from './Modal';
 import { EditIcon, TrashIcon } from './Icons';
 import { STATUSES } from '../utils/taskStatus';
@@ -60,7 +61,7 @@ function SubtaskItem({ subtask: s, canEdit, onToggle, onSave, onDelete }) {
 }
 
 // Full view of one task, including its subtasks
-export default function TaskDetail({ projectId, task: t, user, isOwner, canEditSubtasks, onUpdated, onAttachmentCount, onClose }) {
+export default function TaskDetail({ projectId, task: t, user, isOwner, members, highlightCommentId, canEditSubtasks, onUpdated, onAttachmentCount, onCommentCount, onClose }) {
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [showNote, setShowNote] = useState(false);
@@ -167,6 +168,16 @@ export default function TaskDetail({ projectId, task: t, user, isOwner, canEditS
       )}
 
       <AttachmentPanel projectId={projectId} task={t} user={user} isOwner={isOwner} onCountChange={onAttachmentCount} />
+
+      <CommentList
+        projectId={projectId}
+        task={t}
+        user={user}
+        isOwner={isOwner}
+        members={members}
+        highlightId={highlightCommentId}
+        onCountChange={onCommentCount}
+      />
 
       <div className="form-actions" style={{ marginTop: 16 }}>
         <button type="button" className="btn" onClick={onClose}>Close</button>

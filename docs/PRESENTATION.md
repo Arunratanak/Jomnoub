@@ -44,7 +44,7 @@
    - **Activity** tab: show those changes logged.
    - **Progress** tab: progress bar, overdue and due-this-week tiles, **status donut** and **workload chart** per member.
    - Toggle **dark mode** in the top bar.
-4. **Timeline view:** Overdue group first, then dates, then No deadline. Toggle "Show completed".
+4. **Timeline tab:** Overdue group first, then dates, then No deadline. Toggle "Show completed". Comment on a task right there and type `@` to mention B; in B's window, open the bell and click the notification to land on that comment.
 5. **Invite flow:**
    - A: Generate invite link > Copy.
    - B (private window): paste, sign in, **Join project**.

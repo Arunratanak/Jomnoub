@@ -1,6 +1,8 @@
 import Task from '../models/Task.js';
 import { logActivity, quote } from './activityService.js';
 import { deleteTaskAttachments } from './attachmentService.js';
+import { deleteTaskComments } from './commentService.js';
+import { notify } from './notificationService.js';
 import { isMember, isProjectOwner } from './memberService.js';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../exceptions/HttpError.js';
 import { isObjectId } from '../validations/common.js';
@@ -15,6 +17,9 @@ const populateTask = (task) =>
     { path: 'assignee', select: ASSIGNEE_FIELDS },
     { path: 'suggestedBy', select: 'name' },
   ]);
+
+const notifyAssigned = ({ project, user, task }) =>
+  notify([task.assignee._id], { actor: user._id, type: 'assigned', message: `assigned you to ${quote(task.title)}`, project: project._id, task: task._id });
 
 // Owner of the project, or whoever created the task
 export const canManageTask = (role, task, userId) => role === 'owner' || task.createdBy.equals(userId);
@@ -55,6 +60,7 @@ export async function createTask({ project, role, user }, data) {
 
   await logActivity(project._id, user._id, `created task ${quote(task.title)}`);
   if (suggest) await logActivity(project._id, user._id, `suggested ${quote(task.title)} for the owner`);
+  if (task.assignee) await notifyAssigned({ project, user, task });
   return task;
 }
 
@@ -103,6 +109,10 @@ export async function updateTask({ project, role, user, task }, updates) {
   if ('assignee' in fields && (fields.assignee || null) !== oldAssignee) {
     await logActivity(project._id, user._id,
       task.assignee ? `assigned ${title} to ${task.assignee.name}` : `unassigned ${title}`);
+    if (task.assignee) await notifyAssigned({ project, user, task });
+  }
+  if (updates.status === 'done' && oldStatus !== 'done') {
+    await notify([task.createdBy], { actor: user._id, type: 'task-done', message: `completed ${title}`, project: project._id, task: task._id });
   }
   if (newlySuggested) await logActivity(project._id, user._id, `suggested ${title} for the owner`);
   return task;
@@ -111,6 +121,7 @@ export async function updateTask({ project, role, user, task }, updates) {
 export async function deleteTask({ project, role, user, task }) {
   if (!canManageTask(role, task, user._id)) throw new ForbiddenError('Not allowed');
   await deleteTaskAttachments(task._id);
+  await deleteTaskComments(task._id);
   await task.deleteOne();
   await logActivity(project._id, user._id, `deleted task ${quote(task.title)}`);
 }
@@ -123,22 +134,26 @@ function requirePendingSuggestion(role, task) {
 
 export async function acceptSuggestion({ project, role, user, task }) {
   requirePendingSuggestion(role, task);
+  const suggester = task.suggestedBy;
   task.assignee = user._id;
   task.suggestedBy = null;
   task.suggestedAt = null;
   await task.save();
   await populateTask(task);
   await logActivity(project._id, user._id, `accepted the suggestion for ${quote(task.title)}`);
+  await notify([suggester], { actor: user._id, type: 'suggestion-accepted', message: `accepted your suggestion for ${quote(task.title)}`, project: project._id, task: task._id });
   return task;
 }
 
 export async function declineSuggestion({ project, role, user, task }) {
   requirePendingSuggestion(role, task);
+  const suggester = task.suggestedBy;
   task.suggestedBy = null;
   task.suggestedAt = null;
   await task.save();
   await populateTask(task);
   await logActivity(project._id, user._id, `declined the suggestion for ${quote(task.title)}`);
+  await notify([suggester], { actor: user._id, type: 'suggestion-declined', message: `declined your suggestion for ${quote(task.title)}`, project: project._id, task: task._id });
   return task;
 }
 

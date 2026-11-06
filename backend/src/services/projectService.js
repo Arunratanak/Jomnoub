@@ -4,6 +4,8 @@ import Invite from '../models/Invite.js';
 import { deleteProjectActivity } from './activityService.js';
 import { deleteProjectMessages } from './messageService.js';
 import { deleteProjectAttachments } from './attachmentService.js';
+import { deleteProjectComments } from './commentService.js';
+import { deleteProjectNotifications } from './notificationService.js';
 import { toProjectSummary } from '../dto/projectDto.js';
 import { NotFoundError } from '../exceptions/HttpError.js';
 import { isObjectId } from '../validations/common.js';
@@ -50,5 +52,7 @@ export async function deleteProject(project) {
   await Invite.deleteMany({ project: project._id });
   await deleteProjectActivity(project._id);
   await deleteProjectMessages(project._id);
+  await deleteProjectComments(project._id);
+  await deleteProjectNotifications(project._id);
   await project.deleteOne();
 }

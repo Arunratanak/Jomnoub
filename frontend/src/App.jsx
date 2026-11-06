@@ -7,7 +7,6 @@ import Privacy from "./pages/Privacy.jsx";
 import ProjectPage from "./pages/ProjectPage";
 import MyTasks from "./pages/MyTasks";
 import InvitePage from "./pages/InvitePage";
-import TimelinePage from "./pages/TimelinePage";
 import VerifyEmail from "./pages/VerifyEmail";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -16,6 +15,12 @@ import ResetPassword from "./pages/ResetPassword";
 function ProjectRoute() {
   const { id } = useParams();
   return <ProjectPage key={id} />;
+}
+
+// The timeline used to be its own page; it's now a tab, so old links still work
+function OldTimelineLink() {
+  const { id } = useParams();
+  return <Navigate to={`/projects/${id}?tab=timeline`} replace />;
 }
 
 export default function App() {
@@ -44,7 +49,7 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/my-tasks" element={<MyTasks />} />
         <Route path="/projects/:id" element={<ProjectRoute />} />
-        <Route path="/projects/:id/timeline" element={<TimelinePage />} />
+        <Route path="/projects/:id/timeline" element={<OldTimelineLink />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

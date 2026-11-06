@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import Avatar, { ProjectMark } from '../components/Avatar';
@@ -9,8 +9,9 @@ import ActivityPanel from '../components/ActivityPanel';
 import Modal from '../components/Modal';
 import TaskCard from '../components/TaskCard';
 import TaskDetail from '../components/TaskDetail';
+import TimelinePanel from '../components/TimelinePanel';
 import EditProjectModal from '../components/EditProjectModal';
-import { CalendarIcon, EditIcon, FolderIcon, LinkIcon, PlusIcon, TrashIcon } from '../components/Icons';
+import { EditIcon, FolderIcon, LinkIcon, PlusIcon, TrashIcon } from '../components/Icons';
 import { getLastRead } from '../utils/chatRead';
 import { projectGradient } from '../utils/colors';
 import { isOverdue } from '../utils/dates';
@@ -29,6 +30,7 @@ const errorMessage = (err, fallback) => err.response?.data?.error || fallback;
 export default function ProjectPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [params, setParams] = useSearchParams();
   const [data, setData] = useState(null);
@@ -39,7 +41,7 @@ export default function ProjectPage() {
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [initialAssignee, setInitialAssignee] = useState('');
-  const [detailId, setDetailId] = useState(null);
+  const [showDone, setShowDone] = useState(false);
   const [filter, setFilter] = useState('all');
   const [dropColumn, setDropColumn] = useState(null);
   const [error, setError] = useState('');
@@ -54,12 +56,37 @@ export default function ProjectPage() {
   const [activity, setActivity] = useState(null);
   const [activityError, setActivityError] = useState(false);
   const [unread, setUnread] = useState(false);
+  const [tasksLoaded, setTasksLoaded] = useState(false);
+  const checkedTask = useRef(null);
   const draggedId = useRef(null);
   const tab = params.get('tab') || 'board';
   const loaded = Boolean(data);
   useTitle(data ? data.project.name : loadError === 'notFound' ? 'Project not found' : 'Project');
 
   const setTab = (value) => setParams(value === 'board' ? {} : { tab: value }, { replace: true });
+
+  // The open task lives in the URL (?task=...), so notifications can link straight to a
+  // task or comment, links can be shared, and the browser's Back button closes it
+  const detailId = params.get('task');
+  const openTask = (task) => setParams((prev) => {
+    const next = new URLSearchParams(prev);
+    next.set('task', task._id);
+    next.delete('comment');
+    return next;
+  }, { state: { openedHere: true } });
+  const closeTask = () => {
+    // Opened from this page: step back, so closing doesn't leave an extra history entry
+    if (location.state?.openedHere) {
+      navigate(-1);
+      return;
+    }
+    setParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('task');
+      next.delete('comment');
+      return next;
+    }, { replace: true });
+  };
 
   const loadProject = async () => {
     const res = await api.get(`/projects/${id}`);
@@ -84,7 +111,22 @@ export default function ProjectPage() {
     ]);
     setTasks(t.data.tasks);
     setStats(s.data.stats);
+    setTasksLoaded(true);
   };
+
+  // A link can point at a task this page hasn't loaded (just assigned to you) or one that
+  // was deleted. Reload once to find out which.
+  useEffect(() => {
+    if (!detailId) checkedTask.current = null;
+    if (!detailId || !tasksLoaded || tasks.some((t) => t._id === detailId)) return;
+    if (checkedTask.current !== detailId) {
+      checkedTask.current = detailId;
+      loadTasks().catch(() => {});
+      return;
+    }
+    toast('That task no longer exists.', 'error');
+    closeTask();
+  }, [detailId, tasks, tasksLoaded]);
 
   useEffect(() => {
     api
@@ -230,6 +272,17 @@ export default function ProjectPage() {
     loadActivity();
   };
   const onFileAdded = (taskId) => changeFileCount(taskId, 1);
+  // The total the task window just read, which may include other people's new comments
+  const setCommentTotal = (taskId, total) => {
+    const current = tasks.find((t) => t._id === taskId);
+    if (!current || (current.commentCount || 0) === total) return;
+    setTasks((list) => list.map((t) => (t._id === taskId ? { ...t, commentCount: total } : t)));
+    loadActivity();
+  };
+  const onCommentAdded = (taskId) => {
+    setTasks((list) => list.map((t) => (t._id === taskId ? { ...t, commentCount: (t.commentCount || 0) + 1 } : t)));
+    loadActivity();
+  };
 
   const onTaskUpdated = (task) => {
     applyTask(task);
@@ -394,6 +447,7 @@ export default function ProjectPage() {
 
   const TABS = [
     { value: 'board', label: 'Board' },
+    { value: 'timeline', label: 'Timeline' },
     { value: 'chat', label: 'Chat', dot: unread },
     { value: 'progress', label: 'Progress' },
     { value: 'members', label: `Members (${project.members.length})` },
@@ -429,7 +483,6 @@ export default function ProjectPage() {
           {isOwner && (
             <button type="button" className="btn" onClick={() => setEditingProject(true)}><EditIcon size={18} /> Edit</button>
           )}
-          <Link className="btn" to={`/projects/${id}/timeline`}><CalendarIcon size={18} /> Timeline</Link>
           <button type="button" className="btn btn-primary" onClick={openNewTask}><PlusIcon size={18} /> Add task</button>
         </div>
       </div>
@@ -452,7 +505,7 @@ export default function ProjectPage() {
 
       {error && <p className="alert" style={{ marginBottom: 16 }}>{error}</p>}
 
-      {tab === 'board' && (
+      {(tab === 'board' || tab === 'timeline') && (
         <>
           {isOwner && pendingSuggestions.length > 0 && filter !== 'suggested' && (
             <div className="notice notice-row">
@@ -476,7 +529,28 @@ export default function ProjectPage() {
               </button>
             ))}
           </div>
+        </>
+      )}
 
+      {tab === 'timeline' && (
+        <TimelinePanel
+          tasks={tasks}
+          filtered={visibleTasks}
+          projectId={id}
+          user={user}
+          members={membersSorted}
+          showDone={showDone}
+          onShowDone={setShowDone}
+          canChangeStatus={(t) => canManage(t) || isAssignee(t)}
+          onOpen={openTask}
+          onStatus={changeStatus}
+          onCommentAdded={onCommentAdded}
+          onFileAdded={onFileAdded}
+        />
+      )}
+
+      {tab === 'board' && (
+        <>
           <div className="board">
             {STATUSES.map((col) => {
               const items = visibleTasks.filter((t) => t.status === col.value);
@@ -506,7 +580,7 @@ export default function ProjectPage() {
                       canManage={canManage(t)}
                       canChangeStatus={isAssignee(t)}
                       draggable={canManage(t) || isAssignee(t)}
-                      onOpen={(task) => setDetailId(task._id)}
+                      onOpen={openTask}
                       onStatus={changeStatus}
                       onEdit={startEdit}
                       onDelete={removeTask}
@@ -643,7 +717,10 @@ export default function ProjectPage() {
           canEditSubtasks={canManage(detailTask) || isAssignee(detailTask)}
           onUpdated={onTaskUpdated}
           onAttachmentCount={(change) => changeFileCount(detailTask._id, change)}
-          onClose={() => setDetailId(null)}
+          onCommentCount={(total) => setCommentTotal(detailTask._id, total)}
+          members={membersSorted}
+          highlightCommentId={params.get('comment')}
+          onClose={closeTask}
         />
       )}
 

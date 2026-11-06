@@ -1,11 +1,10 @@
 import { useRef, useState } from 'react';
-import { uploadTaskFile } from '../api/attachments';
 import Avatar from './Avatar';
-import { AlertIcon, CalendarIcon, CheckIcon, EditIcon, PaperclipIcon, TrashIcon } from './Icons';
+import { AlertIcon, CalendarIcon, CheckIcon, CommentIcon, EditIcon, PaperclipIcon, TrashIcon } from './Icons';
 import { isOverdue } from '../utils/dates';
-import { toast } from '../utils/feedback';
-import { ACCEPT, fileProblem } from '../utils/files';
+import { ACCEPT } from '../utils/files';
 import { STATUSES } from '../utils/taskStatus';
+import useTaskFileUpload from '../utils/useTaskFileUpload';
 
 // One card on the project board
 export default function TaskCard({
@@ -16,29 +15,9 @@ export default function TaskCard({
   const subtasks = t.subtasks || [];
   const doneCount = subtasks.filter((s) => s.done).length;
   const inputRef = useRef(null);
-  const [uploading, setUploading] = useState(null); // { name, percent }
   const [fileOver, setFileOver] = useState(false);
-
-  // Any member can attach files, so this works on every card. One file at a time,
-  // so several large files don't compete on a slow connection.
-  const addFiles = async (fileList) => {
-    for (const file of Array.from(fileList)) {
-      const problem = fileProblem(file);
-      if (problem) {
-        toast(problem, 'error');
-        continue;
-      }
-      setUploading({ name: file.name, percent: 0 });
-      try {
-        await uploadTaskFile(projectId, t._id, file, (percent) => setUploading({ name: file.name, percent }));
-        onFileAdded(t._id);
-        toast(`"${file.name}" attached.`);
-      } catch (err) {
-        toast(err.response?.data?.error || `Could not upload "${file.name}".`, 'error');
-      }
-    }
-    setUploading(null);
-  };
+  // Any member can attach files, so this works on every card
+  const { uploading, addFiles } = useTaskFileUpload(projectId, t._id, onFileAdded);
 
   // Files dragged in from the computer, as opposed to the card itself being dragged
   const isFileDrag = (e) => Array.from(e.dataTransfer.types).includes('Files');
@@ -96,11 +75,21 @@ export default function TaskCard({
         </button>
       )}
 
-      {t.attachmentCount > 0 && (
-        <button type="button" className="subtask-summary" onClick={() => onOpen(t)} aria-label={`${t.attachmentCount} file${t.attachmentCount === 1 ? '' : 's'} attached. Open task`}>
-          <PaperclipIcon size={14} />
-          <span>{t.attachmentCount} file{t.attachmentCount === 1 ? '' : 's'}</span>
-        </button>
+      {(t.attachmentCount > 0 || t.commentCount > 0) && (
+        <div className="card-counts">
+          {t.commentCount > 0 && (
+            <button type="button" className="subtask-summary" onClick={() => onOpen(t)} aria-label={`${t.commentCount} comment${t.commentCount === 1 ? '' : 's'}. Open task`}>
+              <CommentIcon size={14} />
+              <span>{t.commentCount} comment{t.commentCount === 1 ? '' : 's'}</span>
+            </button>
+          )}
+          {t.attachmentCount > 0 && (
+            <button type="button" className="subtask-summary" onClick={() => onOpen(t)} aria-label={`${t.attachmentCount} file${t.attachmentCount === 1 ? '' : 's'} attached. Open task`}>
+              <PaperclipIcon size={14} />
+              <span>{t.attachmentCount} file{t.attachmentCount === 1 ? '' : 's'}</span>
+            </button>
+          )}
+        </div>
       )}
 
       <div className="task-people">

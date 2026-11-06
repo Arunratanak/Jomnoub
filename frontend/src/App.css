@@ -440,6 +440,45 @@ details summary { cursor: pointer; color: var(--text-2); font-size: 13px; }
 .subtask-add { display: grid; gap: 8px; margin-top: 12px; }
 .subtask-add-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
+/* ---------- Comments and mentions ---------- */
+.comments { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--border); }
+.comment-list { display: grid; gap: 4px; margin-bottom: 12px; }
+.comment { display: flex; align-items: flex-start; gap: 10px; padding: 8px; border-radius: 8px; }
+.comment.highlighted { background: var(--accent-soft); }
+.comment-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; }
+.comment-text { white-space: pre-wrap; }
+.mention { padding: 0 3px; border-radius: 4px; background: var(--accent-soft); color: var(--accent-text); font-weight: 500; }
+.comment.highlighted .mention { background: var(--surface); }
+.comment-box { display: grid; gap: 6px; }
+.comment-input-wrap { position: relative; }
+.comment-input { min-height: 60px; }
+.comment-box-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.mention-picker { position: absolute; left: 0; bottom: calc(100% + 4px); z-index: 45; width: min(280px, 100%); padding: 4px; border-radius: 10px; background: var(--surface); box-shadow: var(--shadow); max-height: 220px; overflow-y: auto; }
+[data-theme='dark'] .mention-picker { background: var(--hover); }
+.mention-option { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 4px 8px; border: 0; border-radius: 6px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.mention-option:hover, .mention-option.active { background: var(--accent-soft); color: var(--accent-text); }
+.card-counts { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+
+/* ---------- Notification inbox ---------- */
+.menu.notif-menu { width: min(380px, calc(100vw - 24px)); max-height: min(70vh, 560px); overflow-y: auto; }
+.notif-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 16px; }
+.link-btn { padding: 0; border: 0; background: none; color: var(--accent-text); font: inherit; font-size: 13px; cursor: pointer; }
+.link-btn:hover { text-decoration: underline; }
+.notif-item { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 10px 16px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.notif-item:hover { background: var(--surface-2); }
+.notif-item.unread { background: var(--accent-soft); }
+.notif-item.unread:hover { filter: brightness(0.97); }
+.notif-item .row-main { display: grid; gap: 2px; }
+.notif-detail { color: var(--text-2); font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.notif-dot { flex: none; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--accent); }
+
+/* ---------- Timeline tab ---------- */
+.timeline { max-width: 860px; }
+.timeline-toggle { margin-bottom: 16px; }
+.timeline-item { margin-bottom: 0; }
+.timeline-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.timeline-item .select-sm { min-height: 28px; }
+
 /* ---------- Attachments ---------- */
 .attachments { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--border); border-radius: 8px; }
 .attachments.dragging { outline: 2px dashed var(--accent); outline-offset: 4px; }
@@ -534,6 +573,7 @@ details summary { cursor: pointer; color: var(--text-2); font-size: 13px; }
   .search.open { display: flex; position: absolute; inset: 8px 8px auto 8px; z-index: 2; background: var(--bg); }
 
   .main { padding: calc(var(--topbar-h) + 4px) 12px 80px; }
+  .menu.notif-menu { position: fixed; top: calc(var(--topbar-h) + 4px); left: 12px; right: 12px; width: auto; max-height: calc(100vh - var(--topbar-h) - 90px); }
   .toasts { bottom: 72px; }
   .center-page { padding-top: 60px; } /* keeps the card clear of the theme button */
   .chat-row { max-width: 92%; }

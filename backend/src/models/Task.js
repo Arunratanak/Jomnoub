@@ -17,6 +17,7 @@ const taskSchema = new mongoose.Schema(
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     subtasks: [subtaskSchema],
     attachmentCount: { type: Number, default: 0 }, // shown on task cards
+    commentCount: { type: Number, default: 0 }, // shown on task cards
     // Members can't assign work to the owner, only suggest it. While suggestedBy is
     // set, the task waits for the owner to accept (becomes assignee) or decline.
     suggestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },

@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import authRoutes from './src/routes/authRoutes.js';
 import projectRoutes from './src/routes/projectRoutes.js';
 import myTaskRoutes from './src/routes/myTaskRoutes.js';
+import notificationRoutes from './src/routes/notificationRoutes.js';
 import inviteRoutes from './src/routes/inviteRoutes.js';
 import cronRoutes from './src/routes/cronRoutes.js';
 import statusRoutes from './src/routes/statusRoutes.js';
@@ -38,6 +39,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/status', statusRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/my-tasks', myTaskRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/api/invites', inviteRoutes);
 app.use('/api/cron', cronRoutes); // protected by CRON_SECRET, not user login
 
