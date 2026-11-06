@@ -35,26 +35,10 @@ function statusRecord(task, status, userId) {
 const notifyAssigned = ({ project, user, task }) =>
   notify([task.assignee._id], { actor: user._id, type: 'assigned', message: `assigned you to ${quote(task.title)}`, project: project._id, task: task._id });
 
-// Owner of the project, or whoever created the task
-export const canManageTask = (role, task, userId) => role === 'owner' || task.createdBy.equals(userId);
-
-// The owner can delete any task. A member can delete their own: one assigned to them, or
-// one they created that nobody else has been given.
-const canDeleteTask = (role, task, userId) =>
+// The owner can do anything to any task. A member can do anything to their own: one
+// assigned to them, or one they created that nobody else has been given.
+export const canManageTask = (role, task, userId) =>
   role === 'owner' || (task.assignee ? task.assignee.equals(userId) : task.createdBy.equals(userId));
-
-// A task's stage belongs to the person doing it. With nobody assigned, its owner or
-// creator can move it. A pending suggestion has to be accepted first.
-function requireCanMove(role, task, userId) {
-  if (task.suggestedBy) throw new ConflictError('The owner has to accept this task before it can be moved');
-  if (task.assignee && !task.assignee.equals(userId)) {
-    throw new ForbiddenError('Only the person assigned to this task can change its status');
-  }
-  if (!task.assignee && !canManageTask(role, task, userId)) throw new ForbiddenError('Not allowed');
-}
-
-// Managers and the task's assignee can work on its subtasks
-const canEditSubtasks = (role, task, userId) => canManageTask(role, task, userId) || task.assignee?.equals(userId);
 
 // Always scoped to the project the user is a verified member of
 export async function findTaskInProject(project, taskId) {
@@ -117,16 +101,13 @@ export async function createTaskForEveryone({ project, role, user }, data) {
   return tasks;
 }
 
-// Managers can change anything; the assignee may change only the status
 export async function updateTask({ project, role, user, task }, updates) {
-  const keys = Object.keys(updates);
-  if (!canManageTask(role, task, user._id)) {
-    const isAssignee = task.assignee?.equals(user._id);
-    const onlyStatus = keys.length > 0 && keys.every((k) => k === 'status');
-    if (!(isAssignee && onlyStatus)) throw new ForbiddenError('Not allowed');
-  }
+  if (!canManageTask(role, task, user._id)) throw new ForbiddenError('You can only change your own tasks');
   if (updates.assignee && !isMember(project, updates.assignee)) throw new BadRequestError(NOT_A_MEMBER);
-  if (updates.status && updates.status !== task.status) requireCanMove(role, task, user._id);
+  // A suggestion has to be accepted before anyone works on it
+  if (updates.status && updates.status !== task.status && task.suggestedBy) {
+    throw new ConflictError('The owner has to accept this task before it can be moved');
+  }
 
   const oldStatus = task.status;
   const oldAssignee = task.assignee ? String(task.assignee) : null;
@@ -176,11 +157,14 @@ export async function updateTask({ project, role, user, task }, updates) {
 }
 
 export async function deleteTask({ project, role, user, task }) {
-  if (!canDeleteTask(role, task, user._id)) throw new ForbiddenError('You can only delete your own tasks');
+  if (!canManageTask(role, task, user._id)) throw new ForbiddenError('You can only delete your own tasks');
   await deleteTaskAttachments(task._id);
   await deleteTaskComments(task._id);
   await task.deleteOne();
   await logActivity(project._id, user._id, `deleted task ${quote(task.title)}`);
+  // Anyone with a stake in it should know it's gone
+  const ownerId = project.members.find((m) => m.role === 'owner')?.user;
+  await notify([ownerId, task.createdBy, task.assignee], { actor: user._id, type: 'task-deleted', message: `deleted task ${quote(task.title)}`, project: project._id });
 }
 
 // ---------- Suggestions for the owner ----------
@@ -222,7 +206,7 @@ function findSubtask(task, subtaskId) {
 }
 
 export async function addSubtask({ project, role, user, task }, data) {
-  if (!canEditSubtasks(role, task, user._id)) throw new ForbiddenError('Not allowed');
+  if (!canManageTask(role, task, user._id)) throw new ForbiddenError('Not allowed');
   if (task.subtasks.length >= MAX_SUBTASKS) throw new BadRequestError(`A task can have at most ${MAX_SUBTASKS} subtasks`);
   task.subtasks.push(data);
   await task.save();
@@ -232,7 +216,7 @@ export async function addSubtask({ project, role, user, task }, data) {
 }
 
 export async function updateSubtask({ project, role, user, task }, subtaskId, updates) {
-  if (!canEditSubtasks(role, task, user._id)) throw new ForbiddenError('Not allowed');
+  if (!canManageTask(role, task, user._id)) throw new ForbiddenError('Not allowed');
   const subtask = findSubtask(task, subtaskId);
   const justCompleted = updates.done === true && !subtask.done;
   Object.assign(subtask, updates);
@@ -245,7 +229,7 @@ export async function updateSubtask({ project, role, user, task }, subtaskId, up
 }
 
 export async function deleteSubtask({ role, user, task }, subtaskId) {
-  if (!canEditSubtasks(role, task, user._id)) throw new ForbiddenError('Not allowed');
+  if (!canManageTask(role, task, user._id)) throw new ForbiddenError('Not allowed');
   findSubtask(task, subtaskId).deleteOne();
   await task.save();
   await populateTask(task);

@@ -10,7 +10,7 @@ const STEP_ICONS = { todo: PlayIcon, 'in-progress': CheckIcon, done: UndoIcon };
 
 // One card on the project board
 export default function TaskCard({
-  projectId, task: t, person, isMine, isOwner, canManage, canDelete, canChangeStatus, draggable, justMoved,
+  projectId, task: t, person, isMine, isOwner, canManage, canChangeStatus, draggable, justMoved,
   onOpen, onStatus, onEdit, onDelete, onSuggestion, onDragStart, onFileAdded,
 }) {
   const overdue = isOverdue(t);
@@ -170,14 +170,14 @@ export default function TaskCard({
           onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }}
         />
         {canManage && (
-          <button type="button" className="icon-btn icon-btn-sm" onClick={() => onEdit(t)} aria-label={`Edit ${t.title}`} title="Edit">
-            <EditIcon size={18} />
-          </button>
-        )}
-        {canDelete && (
-          <button type="button" className="icon-btn icon-btn-sm" onClick={() => onDelete(t)} aria-label={`Delete ${t.title}`} title="Delete">
-            <TrashIcon size={18} />
-          </button>
+          <>
+            <button type="button" className="icon-btn icon-btn-sm" onClick={() => onEdit(t)} aria-label={`Edit ${t.title}`} title="Edit">
+              <EditIcon size={18} />
+            </button>
+            <button type="button" className="icon-btn icon-btn-sm" onClick={() => onDelete(t)} aria-label={`Delete ${t.title}`} title="Delete">
+              <TrashIcon size={18} />
+            </button>
+          </>
         )}
       </div>
     </div>

@@ -49,7 +49,7 @@
    - A: Generate invite link > Copy.
    - B (private window): paste, sign in, **Join project**.
    - A: refresh, B appears in Members and in Activity ("joined via invite link").
-6. **Permissions:** as B, show that there is no Settings tab or invite panel, and that B can only change the status of a task assigned to them.
+6. **Permissions:** as B, show that there is no Settings tab or invite panel, and that B can edit, move and delete only their own tasks, while the owner can do so on any task.
    - As B, assign a task to the owner: it becomes a **suggestion**. As A, click **Accept**.
    - Open a task and tick a **subtask**. Send a **chat** message from B and show it arrive in A's window.
 7. **My Tasks** as A: all assigned tasks across projects, soonest first.

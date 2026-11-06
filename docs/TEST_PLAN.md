@@ -55,7 +55,7 @@ Sign A back in before continuing.
 |---|---|---|
 | 4.1 | B: look at the project page | No Settings tab (edit/delete project); on the Members tab, no invite link panel or Remove buttons |
 | 4.2 | B: on a task created by A and not assigned to B | No Start, Mark complete or Reopen button, no Edit or Delete |
-| 4.3 | A: assign a task to B | B (after refresh) can move it along (Start, Mark complete), but has no Edit or Delete |
+| 4.3 | A: assign a task to B | B (after refresh) can move, edit and delete it |
 | 4.4 | B: change that task to Done | Works; A sees it moved and the activity entry |
 | 4.5 | B: create a task | B can edit and delete their own task |
 
@@ -218,8 +218,8 @@ Use the same two accounts, A (owner) and B (member).
 | 15.1 | A: new task, choose Everyone as the assignee | One task per member; each person is notified; Activity has one "for all" entry |
 | 15.2 | B: new task, choose Everyone | Members get their copies; the owner's copy shows the owner's name and "waiting to accept" |
 | 15.3 | B: new task, choose the owner | The card shows the owner's name, not Unassigned; the Unassigned filter doesn't list it; the Progress chart counts it for the owner |
-| 15.4 | A: look at a task assigned to B | No Start or Mark complete button, and it can't be dragged; A can still edit, reassign or delete it |
-| 15.5 | B: move their own task through the stages | It works; a task assigned to someone else offers no way to move it |
+| 15.4 | A: on a task assigned to B | A can move, drag, edit, reassign and delete it |
+| 15.5 | B: move their own task through the stages | It works; a teammate's task offers no way to move it |
 | 15.6 | A: on an unassigned task | A can still move it |
 | 15.7 | Either: open the board with All selected | To do shows "Your tasks" first, then Unassigned, then a button for teammates' tasks with their count and any overdue |
 | 15.8 | Click the button, refresh | The list opens, and stays open after refreshing |
@@ -228,16 +228,17 @@ Use the same two accounts, A (owner) and B (member).
 | 15.11 | Hover over a task card, then click an empty part of it | The card lifts and its title turns green; pressing pushes it down; letting go opens the task |
 | 15.12 | Click Attach, Start, Edit or Delete on a card | Each does its own job and does not open the task |
 
-## 16. Deleting tasks
+## 16. Editing and deleting tasks
 
 | # | Step | Expected |
 |---|---|---|
-| 16.1 | B: look at a task assigned to B, even if A created it | It has a Delete button, and deleting it works |
+| 16.1 | B: on a task assigned to B, even if A created it | B can edit and delete it |
 | 16.2 | B: create a task with nobody assigned | B can delete it |
-| 16.3 | B: create a task assigned to another member | B can no longer delete it |
-| 16.4 | B: look at a task assigned to someone else | No Delete button |
+| 16.3 | B: create a task assigned to another member | B can no longer edit or delete it |
+| 16.4 | B: look at a task assigned to someone else | No Edit or Delete button |
 | 16.5 | B: suggest a task for the owner | B can delete it to withdraw the suggestion |
-| 16.6 | A (owner): look at any task | A can delete it |
+| 16.6 | A (owner): look at any task | A can edit and delete it |
+| 16.7 | B: delete a task A created | A's bell shows "deleted task" with its name; clicking it opens the project |
 
 ## 17. Cleanup
 

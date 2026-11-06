@@ -165,7 +165,7 @@ export default function TaskDetail({ projectId, task: t, person, user, isOwner, 
         </form>
       )}
       {!canEditSubtasks && (
-        <p className="muted" style={{ marginTop: 8 }}><small>Only the owner, the task's creator or its assignee can change subtasks.</small></p>
+        <p className="muted" style={{ marginTop: 8 }}><small>Only the owner or the person whose task this is can change subtasks.</small></p>
       )}
 
       <AttachmentPanel projectId={projectId} task={t} user={user} isOwner={isOwner} onCountChange={onAttachmentCount} />

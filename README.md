@@ -18,10 +18,10 @@ Built as a full-stack course final project.
 
 **Tasks**
 - Title, description, status (To do / In progress / Done), deadline and assignee. The assignee must be a project member.
-- The owner or the task's creator can edit a task. The owner can delete any task; a member can delete their own, meaning one assigned to them or one they created that nobody else has been given. Only the person assigned to a task can change its status; with nobody assigned, the owner or creator can.
+- The owner can edit, move and delete any task. A member can do the same to their own: a task assigned to them, or one they created that nobody else has been given. Once a member gives a task to a teammate, it's the teammate's.
 - **Assign to all:** a new task can go to everyone, which creates a separate copy for each member so each person tracks their own.
 - **Suggestions:** members can't assign work to the owner. Choosing the owner creates a suggestion: the card shows the owner's name with "waiting to accept", and nobody can move it until the owner accepts or declines. Accepting makes the owner the assignee; declining leaves it unassigned.
-- **Subtasks:** each task can have up to 50 subtasks with notes and a done checkbox. The owner, the task's creator and its assignee can change them; other members can read them.
+- **Subtasks:** each task can have up to 50 subtasks with notes and a done checkbox. The owner and the person whose task it is can change them; other members can read them.
 - **Moving a task along:** each card shows its next step (Start, Mark complete, Reopen), and an In progress card can go back to To do. Stages look different at a glance, cards record who started and completed them and when, and every move can be undone from the confirmation message.
 - **Comments and @mentions:** any member can comment on a task. Typing `@` lists the project's members, and the mentioned person is notified. The task's assignee, creator and earlier commenters are told about new comments. Authors can delete their own comments and the owner can delete any. A task's address includes `?task=<id>`, so tasks can be linked to directly.
 - **Attachments:** members can add documents, spreadsheets, slides, images and zip files to a task (up to 10 MB each, 20 per task, 500 MB per project and 1 GB per person). Files are stored in a private Cloudflare R2 bucket, and every download goes through the API's membership checks. Without R2 settings, they go in the database instead, which suits local development.
@@ -38,7 +38,7 @@ Built as a full-stack course final project.
 - **Timeline tab**: tasks grouped as Overdue, then by deadline date, then No deadline. Each task can be opened, commented on (with @mentions), given files or moved to another status right there, and the board's filters apply.
 - **Activity log**: the last 30 events in a project (task created, moved, assigned, deleted; member joined, added, removed, left).
 - **My Tasks**: everything assigned to you across projects, soonest deadline first.
-- **Notification bell**: an inbox for assignments, @mentions, comments on your tasks, completed tasks, suggestion decisions and membership changes, each linking to the exact task or comment, with read/unread and "Mark all as read". Below that, unfinished tasks that are overdue or due within 2 days and suggestions waiting for you. It checks every 30 seconds while the page is visible, when the window regains focus, and after you change a task. Notifications are deleted after 90 days.
+- **Notification bell**: an inbox for assignments, @mentions, comments on your tasks, completed and deleted tasks, suggestion decisions and membership changes, each linking to the exact task or comment, with read/unread and "Mark all as read". Below that, unfinished tasks that are overdue or due within 2 days and suggestions waiting for you. It checks every 30 seconds while the page is visible, when the window regains focus, and after you change a task. Notifications are deleted after 90 days.
 
 **Email reminders**
 - Once a day, a GitHub Actions workflow calls the backend, which emails each person one summary of their unfinished tasks that are overdue or due within 2 days (via Resend). The same reminder is never sent twice.
@@ -149,9 +149,9 @@ All routes are under `/api`. Everything requires login except `GET /status`, `PO
 | `DELETE /projects/:projectId/members/:userId` | owner (remove), or the member themselves (leave) |
 | `POST`, `DELETE /projects/:projectId/invites` | owner (generate / disable link) |
 | `POST /projects/:projectId/tasks/assign-all` | members (a task for each member) |
-| `GET`, `POST /projects/:projectId/tasks`, `PATCH`, `DELETE .../tasks/:taskId` | members (edit: owner or creator; delete: owner, the assignee, or the creator if nobody else is assigned; status: also assignee) |
+| `GET`, `POST /projects/:projectId/tasks`, `PATCH`, `DELETE .../tasks/:taskId` | members (edit, move, delete: the owner, the assignee, or the creator if nobody is assigned) |
 | `POST .../tasks/:taskId/suggestion/accept`, `/decline` | owner |
-| `POST .../tasks/:taskId/subtasks`, `PATCH`, `DELETE .../subtasks/:subtaskId` | owner, the task's creator, or its assignee |
+| `POST .../tasks/:taskId/subtasks`, `PATCH`, `DELETE .../subtasks/:subtaskId` | the owner, the assignee, or the creator if nobody is assigned |
 | `GET`, `POST .../tasks/:taskId/attachments`, `GET .../attachments/:attachmentId/download` | members |
 | `DELETE .../tasks/:taskId/attachments/:attachmentId` | the uploader, the task's creator, or the owner |
 | `GET`, `POST .../tasks/:taskId/comments` | members |

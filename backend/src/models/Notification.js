@@ -10,7 +10,7 @@ const notificationSchema = new mongoose.Schema(
     actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     type: {
       type: String,
-      enum: ['assigned', 'mention', 'comment', 'task-done', 'suggestion-accepted', 'suggestion-declined', 'member-joined', 'member-left', 'added', 'removed'],
+      enum: ['assigned', 'mention', 'comment', 'task-done', 'task-deleted', 'suggestion-accepted', 'suggestion-declined', 'member-joined', 'member-left', 'added', 'removed'],
       required: true,
     },
     message: { type: String, required: true, maxlength: 200 },

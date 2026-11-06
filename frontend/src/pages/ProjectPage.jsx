@@ -485,16 +485,15 @@ export default function ProjectPage() {
 
   const { project, role } = data;
   const isOwner = role === 'owner';
-  const canManage = (t) => isOwner || t.createdBy === user._id;
+  // Same rule as the server: the owner can do anything; a member only to their own tasks,
+  // meaning assigned to them, or created by them with nobody else assigned
+  const canManage = (t) => isOwner || (t.assignee ? t.assignee._id === user._id : t.createdBy === user._id);
   const isAssignee = (t) => t.assignee?._id === user._id;
-  // Same rule as the server: the assignee moves their own task; with nobody assigned, the
-  // owner or creator can; a suggestion has to be accepted first
-  const canMove = (t) => !t.suggestedBy && (t.assignee ? isAssignee(t) : canManage(t));
+  // A suggestion has to be accepted before anyone works on it
+  const canMove = (t) => !t.suggestedBy && canManage(t);
   const settings = projectForm || { name: project.name, description: project.description || '' };
   const ownerMember = project.members.find((m) => m.role === 'owner');
   const personOf = (t) => taskPerson(t, ownerMember?.user);
-  // Same rule as the server: the owner can delete anything; a member only their own
-  const canDelete = (t) => isOwner || (t.assignee ? isAssignee(t) : t.createdBy === user._id);
   const membersSorted = [...project.members].sort((a, b) => (a.role === b.role ? 0 : a.role === 'owner' ? -1 : 1));
   const pendingSuggestions = tasks.filter((t) => t.suggestedBy);
   const detailTask = tasks.find((t) => t._id === detailId);
@@ -624,7 +623,6 @@ export default function ProjectPage() {
                   onFileAdded={onFileAdded}
                   isOwner={isOwner}
                   canManage={canManage(t)}
-                  canDelete={canDelete(t)}
                   canChangeStatus={canMove(t)}
                   draggable={canMove(t)}
                   justMoved={movedId === t._id}
@@ -789,7 +787,7 @@ export default function ProjectPage() {
           task={detailTask}
           user={user}
           isOwner={isOwner}
-          canEditSubtasks={canManage(detailTask) || isAssignee(detailTask)}
+          canEditSubtasks={canManage(detailTask)}
           onUpdated={onTaskUpdated}
           onAttachmentCount={(change) => changeFileCount(detailTask._id, change)}
           onCommentCount={(total) => setCommentTotal(detailTask._id, total)}
