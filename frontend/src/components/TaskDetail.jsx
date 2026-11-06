@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import api from '../api/client';
+import AttachmentPanel from './AttachmentPanel';
 import Avatar from './Avatar';
 import Modal from './Modal';
 import { EditIcon, TrashIcon } from './Icons';
@@ -59,7 +60,7 @@ function SubtaskItem({ subtask: s, canEdit, onToggle, onSave, onDelete }) {
 }
 
 // Full view of one task, including its subtasks
-export default function TaskDetail({ projectId, task: t, canEditSubtasks, onUpdated, onClose }) {
+export default function TaskDetail({ projectId, task: t, user, isOwner, canEditSubtasks, onUpdated, onAttachmentCount, onClose }) {
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [showNote, setShowNote] = useState(false);
@@ -164,6 +165,8 @@ export default function TaskDetail({ projectId, task: t, canEditSubtasks, onUpda
       {!canEditSubtasks && (
         <p className="muted" style={{ marginTop: 8 }}><small>Only the owner, the task's creator or its assignee can change subtasks.</small></p>
       )}
+
+      <AttachmentPanel projectId={projectId} task={t} user={user} isOwner={isOwner} onCountChange={onAttachmentCount} />
 
       <div className="form-actions" style={{ marginTop: 16 }}>
         <button type="button" className="btn" onClick={onClose}>Close</button>

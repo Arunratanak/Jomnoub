@@ -437,6 +437,21 @@ details summary { cursor: pointer; color: var(--text-2); font-size: 13px; }
 .subtask-add { display: grid; gap: 8px; margin-top: 12px; }
 .subtask-add-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
+/* ---------- Attachments ---------- */
+.attachments { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--border); border-radius: 8px; }
+.attachments.dragging { outline: 2px dashed var(--accent); outline-offset: 4px; }
+.attachment-list { display: grid; gap: 4px; margin-bottom: 8px; }
+.attachment { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.attachment-thumb { display: flex; align-items: center; justify-content: center; flex: none; width: 44px; height: 44px; border-radius: 8px; background: var(--surface-2); color: var(--text-2); overflow: hidden; }
+.attachment-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.attachment-name { display: block; font-weight: 500; }
+.upload-progress { margin-bottom: 8px; font-size: 13px; }
+.upload-progress-text { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.upload-progress .progress-track { height: 6px; }
+.attachment-drop { display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 4px 8px; width: 100%; padding: 12px; border: 1px dashed var(--border); border-radius: 8px; background: none; color: var(--text); font: inherit; font-weight: 500; cursor: pointer; }
+.attachment-drop:hover { background: var(--surface-2); }
+.attachment-drop small { font-weight: 400; }
+
 /* ---------- Chat ---------- */
 .phone-only { display: none; }
 .chat { display: flex; flex-direction: column; height: max(420px, calc(100vh - 360px)); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); overflow: hidden; }

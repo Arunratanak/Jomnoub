@@ -21,6 +21,7 @@ Built as a full-stack course final project.
 - The owner or the task's creator can edit and delete a task; its assignee can change only its status.
 - **Suggestions:** members can't assign work to the owner. Choosing the owner creates a suggestion, and the task stays unassigned until the owner accepts or declines it (on the board, in My Tasks, or from the bell).
 - **Subtasks:** each task can have up to 50 subtasks with notes and a done checkbox. The owner, the task's creator and its assignee can change them; other members can read them.
+- **Attachments:** members can add documents, spreadsheets, slides, images and zip files to a task (up to 10 MB each, 20 per task, 500 MB per project and 1 GB per person). Files are stored in a private Cloudflare R2 bucket, and every download goes through the API's membership checks. Without R2 settings, they go in the database instead, which suits local development.
 - Board view with three status columns, filters (assigned to me, overdue, unassigned, suggestions) and drag and drop; overdue tasks are highlighted.
 
 **Chat**
@@ -106,7 +107,7 @@ backend/
 Request flow: route -> middlewares (auth, membership, rate limit) -> controller
 (validates with zod) -> service (rules + database) -> JSON response. Services throw
 HttpError subclasses; middlewares/errorHandler.js sends them as { "error": "..." }.
-(There is no uploads/ folder: Jomnoub has no file uploads.)
+(There is no uploads/ folder: Render's disk is wiped on every deploy, so files go to Cloudflare R2 through services/storageService.js.)
 
 frontend/
   src/pages/             Login, ForgotPassword, ResetPassword, VerifyEmail, Dashboard, ProjectPage,
@@ -144,6 +145,8 @@ All routes are under `/api`. Everything requires login except `GET /status`, `PO
 | `GET`, `POST /projects/:projectId/tasks`, `PATCH`, `DELETE .../tasks/:taskId` | members (edit/delete: owner or creator; status: also assignee) |
 | `POST .../tasks/:taskId/suggestion/accept`, `/decline` | owner |
 | `POST .../tasks/:taskId/subtasks`, `PATCH`, `DELETE .../subtasks/:subtaskId` | owner, the task's creator, or its assignee |
+| `GET`, `POST .../tasks/:taskId/attachments`, `GET .../attachments/:attachmentId/download` | members |
+| `DELETE .../tasks/:taskId/attachments/:attachmentId` | the uploader, the task's creator, or the owner |
 | `GET`, `POST /projects/:projectId/messages`, `DELETE .../messages/:messageId` | members (delete: author or owner) |
 | `GET /invites/:token`, `POST /invites/:token/accept` | any logged-in user with a valid link |
 | `GET /my-tasks` | your assigned tasks |
@@ -190,6 +193,7 @@ Names only. Real values live in `.env` files (git-ignored) and in the Render / G
 | `RESEND_API_KEY` | Resend API key for reminder emails |
 | `CRON_SECRET` | Shared secret the reminder job must send |
 | `EMAIL_FROM` | Optional sender, defaults to `Jomnoub <onboarding@resend.dev>` |
+| `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | Cloudflare R2 for file attachments. Test them with `npm run check:storage`. Without them, files go in the database |
 | `SEED_EMAIL` | Optional, only for `npm run seed` |
 
 The server prints a warning at startup naming any missing reminder variables (never their values).
@@ -228,6 +232,7 @@ Vite builds these into the public JavaScript, so they must never contain secrets
 - **Roles.** A project has exactly one owner; there is no way to promote a member or transfer ownership.
 - **Chat isn't instant.** It checks for new messages every 5 seconds while open (no WebSockets), has no file attachments, and tracks "unread" per browser, not per account.
 - **Suggestions aren't emailed.** The owner sees them in the app only.
+- **File storage has limits.** R2's free tier is about 10 GB, and each file is held in the backend's memory while uploading, which is why files are capped at 10 MB.
 - **No change-password page yet.** To change a password while signed in, use "Forgot password?". There's also no way yet to change the account's email or delete the account.
 - **Sessions.** Logging out clears the cookie, but an already-issued token stays valid until it expires (7 days); there is no server-side session revocation.
 - **Rate limits are in memory.** They reset when the backend restarts or sleeps, and would not be shared across multiple server instances.

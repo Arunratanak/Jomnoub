@@ -16,6 +16,7 @@ import Invite from '../src/models/Invite.js';
 import ReminderLog from '../src/models/ReminderLog.js';
 import { quote } from '../src/services/activityService.js';
 import Message from '../src/models/Message.js';
+import { deleteProjectAttachments } from '../src/services/attachmentService.js';
 import {
   DEMO_PROJECT, DEMO_TEAMMATES as TEAMMATES, DEMO_TASKS as TASKS,
   DEMO_SUBTASKS, DEMO_SUGGESTIONS, DEMO_MESSAGES,
@@ -41,6 +42,7 @@ async function clearDemo() {
   const demoProjectIds = demoProjects.map((p) => p._id);
   const demoTaskIds = (await Task.find({ project: { $in: demoProjectIds } }).select('_id').lean()).map((t) => t._id);
 
+  await Promise.all(demoProjectIds.map((id) => deleteProjectAttachments(id)));
   const counts = {
     reminderLogs: (await ReminderLog.deleteMany({ task: { $in: demoTaskIds } })).deletedCount,
     tasks: (await Task.deleteMany({ project: { $in: demoProjectIds } })).deletedCount,

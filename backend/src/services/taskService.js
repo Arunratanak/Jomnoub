@@ -1,5 +1,6 @@
 import Task from '../models/Task.js';
 import { logActivity, quote } from './activityService.js';
+import { deleteTaskAttachments } from './attachmentService.js';
 import { isMember, isProjectOwner } from './memberService.js';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '../exceptions/HttpError.js';
 import { isObjectId } from '../validations/common.js';
@@ -109,6 +110,7 @@ export async function updateTask({ project, role, user, task }, updates) {
 
 export async function deleteTask({ project, role, user, task }) {
   if (!canManageTask(role, task, user._id)) throw new ForbiddenError('Not allowed');
+  await deleteTaskAttachments(task._id);
   await task.deleteOne();
   await logActivity(project._id, user._id, `deleted task ${quote(task.title)}`);
 }

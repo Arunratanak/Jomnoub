@@ -1,5 +1,5 @@
 import Avatar from './Avatar';
-import { AlertIcon, CalendarIcon, CheckIcon, EditIcon, TrashIcon } from './Icons';
+import { AlertIcon, CalendarIcon, CheckIcon, EditIcon, PaperclipIcon, TrashIcon } from './Icons';
 import { isOverdue } from '../utils/dates';
 import { STATUSES } from '../utils/taskStatus';
 
@@ -48,6 +48,13 @@ export default function TaskCard({
           <CheckIcon size={14} />
           <span>{doneCount}/{subtasks.length}</span>
           <span className="progress-track mini"><span className="progress-fill" style={{ width: `${(doneCount / subtasks.length) * 100}%` }} /></span>
+        </button>
+      )}
+
+      {t.attachmentCount > 0 && (
+        <button type="button" className="subtask-summary" onClick={() => onOpen(t)} aria-label={`${t.attachmentCount} file${t.attachmentCount === 1 ? '' : 's'} attached. Open task`}>
+          <PaperclipIcon size={14} />
+          <span>{t.attachmentCount} file{t.attachmentCount === 1 ? '' : 's'}</span>
         </button>
       )}
 

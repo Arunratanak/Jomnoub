@@ -64,5 +64,8 @@ export const inviteLimiter = rateLimit({ ...common, windowMs: 15 * MINUTE, limit
 export const createProjectLimiter = rateLimit({ ...common, windowMs: HOUR, limit: 30, keyGenerator: userKey });
 export const createTaskLimiter = rateLimit({ ...common, windowMs: HOUR, limit: 200, keyGenerator: userKey });
 
+// Uploading files, per user
+export const uploadLimiter = rateLimit({ ...common, windowMs: HOUR, limit: 60, keyGenerator: userKey });
+
 // Sending chat messages, per user
 export const messageLimiter = rateLimit({ ...common, windowMs: MINUTE, limit: 40, keyGenerator: userKey });

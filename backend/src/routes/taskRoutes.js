@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import loadTask from '../middlewares/loadTask.js';
-import { createTaskLimiter } from '../middlewares/rateLimit.js';
+import { createTaskLimiter, uploadLimiter } from '../middlewares/rateLimit.js';
 import * as tasks from '../controllers/taskController.js';
+import * as attachments from '../controllers/attachmentController.js';
 
 // Mounted at /api/projects/:projectId/tasks, behind requireAuth + requireMember
 const router = Router({ mergeParams: true });
@@ -17,5 +18,10 @@ router.post('/:taskId/suggestion/decline', loadTask, tasks.declineSuggestion);
 router.post('/:taskId/subtasks', loadTask, tasks.addSubtask);
 router.patch('/:taskId/subtasks/:subtaskId', loadTask, tasks.updateSubtask);
 router.delete('/:taskId/subtasks/:subtaskId', loadTask, tasks.removeSubtask);
+
+router.get('/:taskId/attachments', loadTask, attachments.list);
+router.post('/:taskId/attachments', uploadLimiter, loadTask, attachments.upload);
+router.get('/:taskId/attachments/:attachmentId/download', loadTask, attachments.download);
+router.delete('/:taskId/attachments/:attachmentId', loadTask, attachments.remove);
 
 export default router;

@@ -169,7 +169,22 @@ Use a private window and an email address you own.
 | 12.11 | Enter a wrong password 11 times | "You're doing that too often" |
 | 12.12 | Only if the address is a Google account: Sign in with Google, then try the old password | Same account as before; the password no longer works |
 
-## 13. Cleanup
+## 13. File attachments
+
+| # | Step | Expected |
+|---|---|---|
+| 13.1 | Open a task, click Add files, choose a PDF | Progress shows, then the file is listed with its size and your name |
+| 13.2 | Drag an image onto the task window | It uploads and shows a thumbnail |
+| 13.3 | Click a file's name | It downloads with the right name and opens correctly |
+| 13.4 | Close the window | The card shows the file count; Activity shows "attached" |
+| 13.5 | Try a file over 10 MB, then an `.html` file | Each is refused with a clear message |
+| 13.6 | Rename a text file to `fake.png` and upload it | "This file doesn't look like the image type its name says it is" |
+| 13.7 | As another member, open the task | They can see, download and add files, but only delete their own |
+| 13.8 | As an outsider, open a download URL | `{"error":"Not found"}` |
+| 13.9 | Delete the task | Its files are gone from the bucket in the Cloudflare R2 dashboard |
+| 13.10 | Upload a file of about 9 MB on the live site | It uploads and downloads intact |
+
+## 14. Cleanup
 
 - A: delete "Test project" and "Private project" (Settings tab > Delete project on each).
 - If you used demo data: `npm run seed:clear` in `backend`.

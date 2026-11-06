@@ -37,7 +37,7 @@ export default function Privacy() {
         </li>
         <li>
           <strong>Content you create.</strong> Projects, tasks, subtasks, descriptions,
-          deadlines, assignments, chat messages, and team membership that you or your
+          deadlines, assignments, chat messages, uploaded files, and team membership that you or your
           teammates enter in the app.
         </li>
         <li>

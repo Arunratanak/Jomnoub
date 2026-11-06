@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js",
+    "check:storage": "node scripts/check-storage.js",
     "seed": "node scripts/seed.js",
     "seed:clear": "node scripts/seed.js --clear",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -18,6 +19,7 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "aws4fetch": "^1.0.20",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^18.0.9",

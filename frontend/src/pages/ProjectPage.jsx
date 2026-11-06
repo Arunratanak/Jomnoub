@@ -627,8 +627,14 @@ export default function ProjectPage() {
         <TaskDetail
           projectId={id}
           task={detailTask}
+          user={user}
+          isOwner={isOwner}
           canEditSubtasks={canManage(detailTask) || isAssignee(detailTask)}
           onUpdated={onTaskUpdated}
+          onAttachmentCount={(change) => {
+            setTasks((list) => list.map((t) => (t._id === detailTask._id ? { ...t, attachmentCount: (t.attachmentCount || 0) + change } : t)));
+            loadActivity();
+          }}
           onClose={() => setDetailId(null)}
         />
       )}
