@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import api from '../api/client';
+import { uploadTaskFile } from '../api/attachments';
 import { DownloadIcon, FileIcon, PaperclipIcon, TrashIcon } from './Icons';
 import { timeAgo } from '../utils/dates';
 import { confirmDialog, toast } from '../utils/feedback';
@@ -29,15 +30,10 @@ export default function AttachmentPanel({ projectId, task, user, isOwner, onCoun
     const id = `${file.name}-${Date.now()}-${Math.random()}`;
     setUploads((list) => [...list, { id, name: file.name, percent: 0 }]);
     try {
-      const res = await api.post(base, file, {
-        // The name goes in a header so it stays out of URLs and request logs
-        headers: { 'Content-Type': 'application/octet-stream', 'X-File-Name': encodeURIComponent(file.name) },
-        onUploadProgress: (e) => {
-          const percent = e.total ? Math.round((e.loaded / e.total) * 100) : 0;
-          setUploads((list) => list.map((u) => (u.id === id ? { ...u, percent } : u)));
-        },
+      const attachment = await uploadTaskFile(projectId, task._id, file, (percent) => {
+        setUploads((list) => list.map((u) => (u.id === id ? { ...u, percent } : u)));
       });
-      setAttachments((list) => [...(list || []), res.data.attachment]);
+      setAttachments((list) => [...(list || []), attachment]);
       onCountChange(1);
     } catch (err) {
       toast(err.response?.data?.error || `Could not upload "${file.name}".`, 'error');

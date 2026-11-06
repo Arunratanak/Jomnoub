@@ -225,6 +225,12 @@ export default function ProjectPage() {
     }
   };
 
+  const changeFileCount = (taskId, change) => {
+    setTasks((list) => list.map((t) => (t._id === taskId ? { ...t, attachmentCount: (t.attachmentCount || 0) + change } : t)));
+    loadActivity();
+  };
+  const onFileAdded = (taskId) => changeFileCount(taskId, 1);
+
   const onTaskUpdated = (task) => {
     applyTask(task);
     notifyTasksChanged();
@@ -478,7 +484,10 @@ export default function ProjectPage() {
                 <div
                   key={col.value}
                   className={`column${dropColumn === col.value ? ' drop' : ''}`}
-                  onDragOver={(e) => { e.preventDefault(); setDropColumn(col.value); }}
+                  onDragOver={(e) => {
+                    e.preventDefault(); // also stops a file dropped here from opening in the browser
+                    if (draggedId.current) setDropColumn(col.value); // only highlight for task cards
+                  }}
                   onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropColumn(null); }}
                   onDrop={(e) => onDrop(e, col.value)}
                 >
@@ -490,7 +499,9 @@ export default function ProjectPage() {
                   {items.map((t) => (
                     <TaskCard
                       key={t._id}
+                      projectId={id}
                       task={t}
+                      onFileAdded={onFileAdded}
                       isOwner={isOwner}
                       canManage={canManage(t)}
                       canChangeStatus={isAssignee(t)}
@@ -631,10 +642,7 @@ export default function ProjectPage() {
           isOwner={isOwner}
           canEditSubtasks={canManage(detailTask) || isAssignee(detailTask)}
           onUpdated={onTaskUpdated}
-          onAttachmentCount={(change) => {
-            setTasks((list) => list.map((t) => (t._id === detailTask._id ? { ...t, attachmentCount: (t.attachmentCount || 0) + change } : t)));
-            loadActivity();
-          }}
+          onAttachmentCount={(change) => changeFileCount(detailTask._id, change)}
           onClose={() => setDetailId(null)}
         />
       )}

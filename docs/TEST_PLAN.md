@@ -173,6 +173,7 @@ Use a private window and an email address you own.
 
 | # | Step | Expected |
 |---|---|---|
+| 13.0 | On the board, click Attach on a card and choose a file, then drag another file onto the card | Progress shows on the card, then its file count goes up |
 | 13.1 | Open a task, click Add files, choose a PDF | Progress shows, then the file is listed with its size and your name |
 | 13.2 | Drag an image onto the task window | It uploads and shows a thumbnail |
 | 13.3 | Click a file's name | It downloads with the right name and opens correctly |
