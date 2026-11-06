@@ -5,7 +5,7 @@ import { CalendarIcon, CheckIcon, CommentIcon, PaperclipIcon } from './Icons';
 import { toast } from '../utils/feedback';
 import { ACCEPT } from '../utils/files';
 import { OVERDUE, NO_DEADLINE, utcDay, groupTasks } from '../utils/timeline';
-import { STATUSES, statusNote } from '../utils/taskStatus';
+import { opensCard, STATUSES, statusNote } from '../utils/taskStatus';
 import useTaskFileUpload from '../utils/useTaskFileUpload';
 
 function dayLabel(key, todayKey, tomorrowKey) {
@@ -26,7 +26,7 @@ function TimelineItem({ task: t, person, overdue, projectId, user, members, canC
   const doneSubtasks = subtasks.filter((s) => s.done).length;
 
   return (
-    <li className={`task-card timeline-item${overdue ? ' overdue' : ''}`}>
+    <li className={`task-card timeline-item${overdue ? ' overdue' : ''}`} onClick={(e) => { if (opensCard(e)) onOpen(t); }}>
       <button type="button" className={`task-title-btn${t.status === 'done' ? ' done-title' : ''}`} onClick={() => onOpen(t)}>{t.title}</button>
 
       <div className="feed-meta">

@@ -26,6 +26,7 @@ Built as a full-stack course final project.
 - **Comments and @mentions:** any member can comment on a task. Typing `@` lists the project's members, and the mentioned person is notified. The task's assignee, creator and earlier commenters are told about new comments. Authors can delete their own comments and the owner can delete any. A task's address includes `?task=<id>`, so tasks can be linked to directly.
 - **Attachments:** members can add documents, spreadsheets, slides, images and zip files to a task (up to 10 MB each, 20 per task, 500 MB per project and 1 GB per person). Files are stored in a private Cloudflare R2 bucket, and every download goes through the API's membership checks. Without R2 settings, they go in the database instead, which suits local development.
 - The To do column puts your own tasks first, then unassigned ones, with teammates' tasks folded behind a button that remembers your choice. Your tasks also come first in the other columns.
+- Clicking anywhere on a task card opens the task, on the board and the Timeline; buttons inside the card keep their own action.
 - Board view with three status columns, filters (assigned to me, overdue, unassigned, suggestions) and drag and drop; overdue tasks are highlighted.
 
 **Chat**

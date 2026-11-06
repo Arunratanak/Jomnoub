@@ -304,7 +304,7 @@ ul { margin: 0; padding: 0; list-style: none; }
 .column-head { display: flex; align-items: center; gap: 8px; padding: 2px 4px 10px; font-weight: 600; }
 .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
 .column-empty { padding: 16px 4px; color: var(--text-2); font-size: 13px; text-align: center; }
-.task-card { display: grid; gap: 8px; margin-bottom: 8px; padding: 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); }
+.task-card { display: grid; gap: 10px; margin-bottom: 10px; padding: 14px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); cursor: pointer; transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease, background-color 0.14s ease; }
 [data-theme='dark'] .task-card { border-color: transparent; }
 .task-card:last-child { margin-bottom: 0; }
 .task-card.overdue { border-color: var(--danger); }
@@ -417,13 +417,12 @@ details summary { cursor: pointer; color: var(--text-2); font-size: 13px; }
 .notice-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 
 /* ---------- Task cards, subtasks ---------- */
-.task-title-btn { padding: 0; border: 0; background: none; color: inherit; font: inherit; font-weight: 500; text-align: left; cursor: pointer; }
-.task-title-btn:hover { color: var(--accent-text); text-decoration: underline; }
+.task-title-btn { padding: 0; border: 0; background: none; color: inherit; font: inherit; font-size: 16px; font-weight: 600; line-height: 1.35; text-align: left; overflow-wrap: anywhere; cursor: pointer; transition: color 0.14s ease; }
 .task-card.file-over { outline: 2px dashed var(--accent); outline-offset: 2px; }
 .task-card .upload-progress { margin-bottom: 0; overflow-wrap: anywhere; }
 .task-actions .attach-btn { gap: 4px; padding: 0 10px; }
-.task-card.draggable { cursor: grab; }
-.task-card.draggable:active { cursor: grabbing; }
+.task-card:has(.task-title-btn:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.task-card .task-title-btn:focus-visible { outline: none; }
 .column.drop { outline: 2px dashed var(--accent); outline-offset: -2px; }
 .subtask-summary { display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: var(--text-2); font: inherit; font-size: 12px; cursor: pointer; }
 .progress-track.mini { display: block; flex: 1; height: 5px; }
@@ -486,6 +485,22 @@ details summary { cursor: pointer; color: var(--text-2); font-size: 13px; }
 .teammates-faces { display: inline-flex; flex: none; }
 .teammates-faces .avatar + .avatar { margin-left: -6px; }
 .teammates-overdue { color: var(--danger); font-weight: 500; white-space: nowrap; }
+
+/* ---------- Task card hover and press ---------- */
+@media (hover: hover) {
+  .task-card:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12); }
+  [data-theme='dark'] .task-card:hover { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5); }
+  .task-card.overdue:hover { border-color: var(--danger); }
+  .task-card.status-done:hover { background: var(--surface); }
+  .task-card.mine:not(.overdue):not(.status-done):hover { box-shadow: inset 0 0 0 1px var(--accent), 0 6px 18px rgba(0, 0, 0, 0.12); }
+  .task-card:hover .task-title-btn { color: var(--accent-text); }
+  .task-card.status-done:hover .task-title-btn { color: var(--text-2); }
+}
+/* Pressing a button inside the card shouldn't look like pressing the card */
+.task-card:active:not(:has(button:active, a:active, input:active, select:active, textarea:active)) { transform: translateY(0) scale(0.985); box-shadow: none; background: var(--surface-2); }
+@media (prefers-reduced-motion: reduce) {
+  .task-card:hover, .task-card:active { transform: none !important; }
+}
 
 /* ---------- Comments and mentions ---------- */
 .comments { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--border); }

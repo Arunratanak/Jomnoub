@@ -225,6 +225,8 @@ Use the same two accounts, A (owner) and B (member).
 | 15.8 | Click the button, refresh | The list opens, and stays open after refreshing |
 | 15.9 | Choose the Overdue filter | Matching tasks all show, none folded |
 | 15.10 | A: with the list folded, add a task for B | The list opens, so the new task can be seen |
+| 15.11 | Hover over a task card, then click an empty part of it | The card lifts and its title turns green; pressing pushes it down; letting go opens the task |
+| 15.12 | Click Attach, Start, Edit or Delete on a card | Each does its own job and does not open the task |
 
 ## 16. Cleanup
 

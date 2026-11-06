@@ -3,7 +3,7 @@ import Avatar from './Avatar';
 import { AlertIcon, CalendarIcon, CheckIcon, CommentIcon, EditIcon, PaperclipIcon, PlayIcon, TrashIcon, UndoIcon } from './Icons';
 import { isOverdue } from '../utils/dates';
 import { ACCEPT } from '../utils/files';
-import { NEXT_STEP, statusNote } from '../utils/taskStatus';
+import { NEXT_STEP, opensCard, statusNote } from '../utils/taskStatus';
 import useTaskFileUpload from '../utils/useTaskFileUpload';
 
 const STEP_ICONS = { todo: PlayIcon, 'in-progress': CheckIcon, done: UndoIcon };
@@ -31,6 +31,7 @@ export default function TaskCard({
     <div
       className={`task-card status-${t.status}${overdue ? ' overdue' : ''}${draggable ? ' draggable' : ''}${fileOver ? ' file-over' : ''}${justMoved ? ' just-moved' : ''}${isMine ? ' mine' : ''}`}
       draggable={draggable && !uploading}
+      onClick={(e) => { if (opensCard(e)) onOpen(t); }}
       onDragStart={draggable ? (e) => onDragStart(e, t) : undefined}
       onDragOver={(e) => {
         if (!isFileDrag(e)) return;
