@@ -4,8 +4,9 @@ import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { ProjectMark } from '../components/Avatar';
 import EditProjectModal from '../components/EditProjectModal';
+import JoinProjectModal from '../components/JoinProjectModal';
 import Modal from '../components/Modal';
-import { EditIcon, FolderIcon, MoreIcon, PlusIcon, SearchIcon, TrashIcon } from '../components/Icons';
+import { EditIcon, FolderIcon, LinkIcon, MoreIcon, PlusIcon, SearchIcon, TrashIcon } from '../components/Icons';
 import { projectGradient } from '../utils/colors';
 import { timeAgo } from '../utils/dates';
 import { notifyProjectsChanged, notifyTasksChanged } from '../utils/events';
@@ -98,6 +99,7 @@ export default function Dashboard() {
   const [loadError, setLoadError] = useState('');
   const [filter, setFilter] = useState('all');
   const [creating, setCreating] = useState(false);
+  const [joining, setJoining] = useState(false);
   const [editing, setEditing] = useState(null); // the project being edited
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -142,6 +144,7 @@ export default function Dashboard() {
   };
 
   const closeEdit = useCallback(() => setEditing(null), []);
+  const closeJoin = useCallback(() => setJoining(false), []);
 
   const onProjectSaved = async () => {
     setEditing(null);
@@ -182,9 +185,14 @@ export default function Dashboard() {
           <h1>Welcome back, {user.name.split(' ')[0]}</h1>
           <p className="muted">Here's what your teams are working on.</p>
         </div>
-        <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
-          <PlusIcon size={18} /> New project
-        </button>
+        <div className="channel-actions">
+          <button type="button" className="btn" onClick={() => setJoining(true)}>
+            <LinkIcon size={18} /> Join project
+          </button>
+          <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
+            <PlusIcon size={18} /> New project
+          </button>
+        </div>
       </div>
 
       <div className="chips" role="group" aria-label="Filter projects">
@@ -220,10 +228,15 @@ export default function Dashboard() {
         <div className="empty">
           <FolderIcon />
           <h2>No projects yet</h2>
-          <p>Create your first project, then invite your team.</p>
-          <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
-            <PlusIcon size={18} /> New project
-          </button>
+          <p>Create your first project and invite your team, or join one with an invite link.</p>
+          <div className="channel-actions">
+            <button type="button" className="btn" onClick={() => setJoining(true)}>
+              <LinkIcon size={18} /> Join project
+            </button>
+            <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
+              <PlusIcon size={18} /> New project
+            </button>
+          </div>
         </div>
       ) : (
         <div className="empty">
@@ -242,6 +255,8 @@ export default function Dashboard() {
           onSaved={onProjectSaved}
         />
       )}
+
+      {joining && <JoinProjectModal onClose={closeJoin} />}
 
       {creating && (
         <Modal title="New project" onClose={closeModal}>

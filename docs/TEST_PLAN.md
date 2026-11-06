@@ -257,7 +257,16 @@ Use the same two accounts, A (owner) and B (member).
 | 17.9 | A: choose a `.txt` or `.pdf` file as a photo | It's refused with a clear message, and the photo doesn't change |
 | 17.10 | A: copy your uploaded photo's address, then open it as an account that shares no project with you | "Not found" |
 
-## 18. Cleanup
+## 18. Joining from the home page
+
+| # | Step | Expected |
+|---|---|---|
+| 18.1 | B: on Home, click Join project and paste A's invite link | The invite page shows the project's name; clicking Join project opens it |
+| 18.2 | B: try again with the same link | The invite page says you're already a member, with an Open project button |
+| 18.3 | B: enter `hello` | "That doesn't look like an invite link", and the box stays open |
+| 18.4 | A: generate a new link; B: paste the old one | The box says the link is invalid or has expired |
+
+## 19. Cleanup
 
 - A: delete "Test project" and "Private project" (Settings tab > Delete project on each).
 - If you used demo data: `npm run seed:clear` in `backend`.

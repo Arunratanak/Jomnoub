@@ -14,7 +14,7 @@ Built as a full-stack course final project.
 
 **Projects and teams**
 - Create, rename and delete projects. The creator is the owner.
-- Invite teammates with a link (random token, expires after 7 days, one active link per project, can be regenerated or disabled), or add someone by email if they have signed in with Google before.
+- Invite teammates with a link (random token, expires after 7 days, one active link per project, can be regenerated or disabled), or add someone by email if they have signed in with Google before. Anyone with a link can open it directly or paste it into **Join project** on the home page.
 - Owners can remove members; members can leave. Tasks assigned to someone who leaves or is removed become unassigned. The last owner can't be removed.
 
 **Tasks**
