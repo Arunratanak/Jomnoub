@@ -470,6 +470,23 @@ details summary { cursor: pointer; color: var(--text-2); font-size: 13px; }
 .toast { display: flex; align-items: center; gap: 12px; }
 .toast-action { padding: 2px 4px; border: 0; background: none; color: inherit; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; pointer-events: auto; }
 
+/* ---------- Your tasks first ---------- */
+.task-card.mine:not(.overdue):not(.status-done) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.task-card.mine.status-in-progress:not(.overdue) { border-left-color: var(--status-progress); }
+.you-tag { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-text); font-size: 11px; font-weight: 600; }
+.todo-group { margin-bottom: 12px; }
+.todo-group:last-child { margin-bottom: 0; }
+.todo-group-head { margin: 0 0 8px; padding: 0 4px; font-size: 13px; font-weight: 600; }
+.todo-group-head .muted { font-weight: 400; }
+.todo-none { margin: 0; padding: 12px 4px; color: var(--text-2); font-size: 13px; text-align: center; }
+.teammates-toggle { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 40px; margin-bottom: 8px; padding: 6px 10px; border: 1px dashed var(--border); border-radius: 10px; background: none; color: var(--text); font: inherit; font-size: 13px; font-weight: 500; text-align: left; cursor: pointer; }
+.teammates-toggle:hover { background: var(--hover); }
+.teammates-toggle > svg { flex: none; transition: transform 0.15s; }
+.teammates-toggle.open > svg { transform: rotate(180deg); }
+.teammates-faces { display: inline-flex; flex: none; }
+.teammates-faces .avatar + .avatar { margin-left: -6px; }
+.teammates-overdue { color: var(--danger); font-weight: 500; white-space: nowrap; }
+
 /* ---------- Comments and mentions ---------- */
 .comments { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--border); }
 .comment-list { display: grid; gap: 4px; margin-bottom: 12px; }

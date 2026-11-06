@@ -34,7 +34,7 @@ export async function remove(req, res) {
 
 // GET /api/projects/:projectId/stats
 export async function stats(req, res) {
-  res.json({ stats: await getProjectStats(req.project._id) });
+  res.json({ stats: await getProjectStats(req.project) });
 }
 
 // GET /api/projects/:projectId/activity

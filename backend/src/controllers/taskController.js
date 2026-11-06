@@ -1,5 +1,5 @@
 import {
-  createTaskSchema, updateTaskSchema, createSubtaskSchema, updateSubtaskSchema,
+  assignToAllSchema, createTaskSchema, updateTaskSchema, createSubtaskSchema, updateSubtaskSchema,
 } from '../validations/taskValidation.js';
 import * as taskService from '../services/taskService.js';
 
@@ -14,6 +14,12 @@ export async function list(req, res) {
 export async function create(req, res) {
   const task = await taskService.createTask(context(req), createTaskSchema.parse(req.body));
   res.status(201).json({ task });
+}
+
+// POST /api/projects/:projectId/tasks/assign-all
+export async function createForEveryone(req, res) {
+  const tasks = await taskService.createTaskForEveryone(context(req), assignToAllSchema.parse(req.body));
+  res.status(201).json({ tasks });
 }
 
 // PATCH /api/projects/:projectId/tasks/:taskId

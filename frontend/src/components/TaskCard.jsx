@@ -10,7 +10,7 @@ const STEP_ICONS = { todo: PlayIcon, 'in-progress': CheckIcon, done: UndoIcon };
 
 // One card on the project board
 export default function TaskCard({
-  projectId, task: t, isOwner, canManage, canChangeStatus, draggable, justMoved,
+  projectId, task: t, person, isMine, isOwner, canManage, canChangeStatus, draggable, justMoved,
   onOpen, onStatus, onEdit, onDelete, onSuggestion, onDragStart, onFileAdded,
 }) {
   const overdue = isOverdue(t);
@@ -29,7 +29,7 @@ export default function TaskCard({
 
   return (
     <div
-      className={`task-card status-${t.status}${overdue ? ' overdue' : ''}${draggable ? ' draggable' : ''}${fileOver ? ' file-over' : ''}${justMoved ? ' just-moved' : ''}`}
+      className={`task-card status-${t.status}${overdue ? ' overdue' : ''}${draggable ? ' draggable' : ''}${fileOver ? ' file-over' : ''}${justMoved ? ' just-moved' : ''}${isMine ? ' mine' : ''}`}
       draggable={draggable && !uploading}
       onDragStart={draggable ? (e) => onDragStart(e, t) : undefined}
       onDragOver={(e) => {
@@ -55,7 +55,7 @@ export default function TaskCard({
           <span className="status-badge">In progress</span>
           {note && <small className="muted">{note}</small>}
           {/* Dragging doesn't work by keyboard or on phones, so this needs its own control */}
-          {(canManage || canChangeStatus) && (
+          {canChangeStatus && (
             <button
               type="button"
               className="icon-btn icon-btn-sm status-back"
@@ -123,8 +123,12 @@ export default function TaskCard({
       )}
 
       <div className="task-people">
-        <Avatar user={t.assignee} size={24} />
-        <span>{t.assignee ? t.assignee.name : 'Unassigned'}</span>
+        <Avatar user={person} size={24} />
+        <span>
+          {person ? person.name : 'Unassigned'}
+          {isMine && <span className="you-tag">You</span>}
+          {t.suggestedBy && <small className="muted"> · waiting to accept</small>}
+        </span>
       </div>
 
       {uploading && (
@@ -135,7 +139,7 @@ export default function TaskCard({
       )}
 
       <div className="task-actions">
-        {(canManage || canChangeStatus) && (
+        {canChangeStatus && (
           <button
             type="button"
             className={`btn btn-sm next-step${t.status === 'in-progress' ? ' btn-primary' : ''}`}

@@ -15,7 +15,10 @@ export const NEXT_STEP = {
   done: { status: 'in-progress', label: 'Reopen' },
 };
 
-const byWhom = (action, person) => (person?.name ? `${action} by ${person.name}` : action);
+// Who a task is for: a suggestion waiting for the owner is already the owner's to take
+export const taskPerson = (t, owner) => t.assignee || (t.suggestedBy ? owner : null);
+
+const byWhom =(action, person) => (person?.name ? `${action} by ${person.name}` : action);
 
 // "Started by Sam · 2 h ago" or "Completed by Alex · Nov 6". Empty for tasks with no
 // record, such as those finished before the app kept one.

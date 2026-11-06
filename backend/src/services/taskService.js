@@ -38,6 +38,16 @@ const notifyAssigned = ({ project, user, task }) =>
 // Owner of the project, or whoever created the task
 export const canManageTask = (role, task, userId) => role === 'owner' || task.createdBy.equals(userId);
 
+// A task's stage belongs to the person doing it. With nobody assigned, its owner or
+// creator can move it. A pending suggestion has to be accepted first.
+function requireCanMove(role, task, userId) {
+  if (task.suggestedBy) throw new ConflictError('The owner has to accept this task before it can be moved');
+  if (task.assignee && !task.assignee.equals(userId)) {
+    throw new ForbiddenError('Only the person assigned to this task can change its status');
+  }
+  if (!task.assignee && !canManageTask(role, task, userId)) throw new ForbiddenError('Not allowed');
+}
+
 // Managers and the task's assignee can work on its subtasks
 const canEditSubtasks = (role, task, userId) => canManageTask(role, task, userId) || task.assignee?.equals(userId);
 
@@ -81,6 +91,27 @@ export async function createTask({ project, role, user }, data) {
   return task;
 }
 
+// "Assign to all": one task per member, so each person moves their own through the
+// stages. As with any task, a member's copy for the owner waits as a suggestion.
+export async function createTaskForEveryone({ project, role, user }, data) {
+  const tasks = [];
+  for (const { user: memberId } of project.members) {
+    const suggest = isSuggestionForOwner(project, role, memberId);
+    const task = await Task.create({
+      ...data,
+      assignee: suggest ? null : memberId,
+      ...(suggest ? { suggestedBy: user._id, suggestedAt: new Date() } : {}),
+      project: project._id,
+      createdBy: user._id,
+    });
+    await populateTask(task);
+    tasks.push(task);
+    if (task.assignee) await notifyAssigned({ project, user, task });
+  }
+  await logActivity(project._id, user._id, `created task ${quote(data.title)} for all ${tasks.length} members`);
+  return tasks;
+}
+
 // Managers can change anything; the assignee may change only the status
 export async function updateTask({ project, role, user, task }, updates) {
   const keys = Object.keys(updates);
@@ -90,6 +121,7 @@ export async function updateTask({ project, role, user, task }, updates) {
     if (!(isAssignee && onlyStatus)) throw new ForbiddenError('Not allowed');
   }
   if (updates.assignee && !isMember(project, updates.assignee)) throw new BadRequestError(NOT_A_MEMBER);
+  if (updates.status && updates.status !== task.status) requireCanMove(role, task, user._id);
 
   const oldStatus = task.status;
   const oldAssignee = task.assignee ? String(task.assignee) : null;

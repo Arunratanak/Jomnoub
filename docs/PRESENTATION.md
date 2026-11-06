@@ -40,7 +40,7 @@
 1. **Sign in** (Account A) with Google: "No passwords stored; the server verifies Google's token."
 2. **Dashboard:** projects list, the **bell** with its count, "My tasks". Open the bell dropdown.
 3. **Demo project:**
-   - **Board** tab: status columns; point at a red overdue task. Create a task, assign it, click **Start** and then **Mark complete**. Point at "Completed by" on the card and the progress bar rising, then press **Undo**.
+   - **Board** tab: status columns; point at a red overdue task. Create a task, assign it to yourself, click **Start** and then **Mark complete**. Point at "Completed by" on the card and the progress bar rising, then press **Undo**.
    - **Activity** tab: show those changes logged.
    - **Progress** tab: progress bar, overdue and due-this-week tiles, **status donut** and **workload chart** per member.
    - Toggle **dark mode** in the top bar.

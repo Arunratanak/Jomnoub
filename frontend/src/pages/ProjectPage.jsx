@@ -11,6 +11,7 @@ import Modal from '../components/Modal';
 import TaskCard from '../components/TaskCard';
 import TaskDetail from '../components/TaskDetail';
 import TimelinePanel from '../components/TimelinePanel';
+import TodoGroups from '../components/TodoGroups';
 import EditProjectModal from '../components/EditProjectModal';
 import { EditIcon, FolderIcon, LinkIcon, PlusIcon, TrashIcon } from '../components/Icons';
 import { getLastRead } from '../utils/chatRead';
@@ -18,7 +19,7 @@ import { projectGradient } from '../utils/colors';
 import { isOverdue } from '../utils/dates';
 import { notifyProjectsChanged, notifyTasksChanged } from '../utils/events';
 import { confirmDialog, toast } from '../utils/feedback';
-import { STATUSES, statusLabel } from '../utils/taskStatus';
+import { STATUSES, statusLabel, taskPerson } from '../utils/taskStatus';
 import useTitle from '../utils/useTitle';
 
 // The chart library is large, so it only loads when the Progress tab is opened
@@ -26,6 +27,17 @@ const ProjectStats = lazy(() => import('../components/ProjectStats'));
 
 const UNREAD_CHECK_MS = 30000;
 const MOVED_HIGHLIGHT_MS = 900;
+const EVERYONE = 'everyone'; // the assignee choice that makes a copy for each member
+const SHOW_TEAMMATES_KEY = 'jomnoub:show-teammates';
+
+// Only a convenience, so it has to work when browser storage doesn't
+function loadShowTeammates() {
+  try {
+    return localStorage.getItem(SHOW_TEAMMATES_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
 const emptyForm = { title: '', description: '', assignee: '', deadline: '' };
 const errorMessage = (err, fallback) => err.response?.data?.error || fallback;
 
@@ -59,6 +71,7 @@ export default function ProjectPage() {
   const [activityError, setActivityError] = useState(false);
   const [unread, setUnread] = useState(false);
   const [tasksLoaded, setTasksLoaded] = useState(false);
+  const [showTeammates, setShowTeammates] = useState(loadShowTeammates);
   const [movedId, setMovedId] = useState(null); // the card that just changed column
   const movedTimer = useRef(null);
   const checkedTask = useRef(null);
@@ -200,12 +213,20 @@ export default function ProjectPage() {
     // accidentally accept or withdraw a pending suggestion
     if (!editingId || form.assignee !== initialAssignee) body.assignee = form.assignee || null;
     try {
-      const res = editingId
-        ? await api.patch(`/projects/${id}/tasks/${editingId}`, body)
-        : await api.post(`/projects/${id}/tasks`, body);
+      if (form.assignee === EVERYONE) {
+        delete body.assignee;
+        const res = await api.post(`/projects/${id}/tasks/assign-all`, body);
+        toast(`Added for all ${res.data.tasks.length} members.`);
+      } else {
+        const res = editingId
+          ? await api.patch(`/projects/${id}/tasks/${editingId}`, body)
+          : await api.post(`/projects/${id}/tasks`, body);
+        const suggested = res.data.task.suggestedBy && form.assignee !== initialAssignee && !isOwnerRole();
+        toast(suggested ? 'Suggested to the owner. They need to confirm it.' : editingId ? 'Task saved.' : 'Task added.');
+      }
       notifyTasksChanged();
-      const suggested = res.data.task.suggestedBy && form.assignee !== initialAssignee && !isOwnerRole();
-      toast(suggested ? 'Suggested to the owner. They need to confirm it.' : editingId ? 'Task saved.' : 'Task added.');
+      // Don't let a task just given to a teammate vanish into the folded list
+      if (form.assignee && form.assignee !== user._id) changeShowTeammates(true);
       closeTaskForm();
       await loadTasks();
     } catch (err) {
@@ -215,10 +236,19 @@ export default function ProjectPage() {
 
   const isOwnerRole = () => data?.role === 'owner';
 
+  const changeShowTeammates = (value) => {
+    setShowTeammates(value);
+    try {
+      localStorage.setItem(SHOW_TEAMMATES_KEY, value ? '1' : '0');
+    } catch {
+      // Stays open or closed for this visit only
+    }
+  };
+
   const startEdit = (t) => {
     const ownerMember = data.project.members.find((m) => m.role === 'owner');
-    // A member sees their pending suggestion as "owner" selected; the owner sees it as unassigned
-    const current = t.suggestedBy && !isOwnerRole() ? ownerMember?.user._id || '' : t.assignee?._id || '';
+    // A pending suggestion is shown as the owner's
+    const current = t.suggestedBy ? ownerMember?.user._id || '' : t.assignee?._id || '';
     setEditingId(t._id);
     setInitialAssignee(current);
     setForm({
@@ -457,8 +487,12 @@ export default function ProjectPage() {
   const isOwner = role === 'owner';
   const canManage = (t) => isOwner || t.createdBy === user._id;
   const isAssignee = (t) => t.assignee?._id === user._id;
+  // Same rule as the server: the assignee moves their own task; with nobody assigned, the
+  // owner or creator can; a suggestion has to be accepted first
+  const canMove = (t) => !t.suggestedBy && (t.assignee ? isAssignee(t) : canManage(t));
   const settings = projectForm || { name: project.name, description: project.description || '' };
   const ownerMember = project.members.find((m) => m.role === 'owner');
+  const personOf = (t) => taskPerson(t, ownerMember?.user);
   const membersSorted = [...project.members].sort((a, b) => (a.role === b.role ? 0 : a.role === 'owner' ? -1 : 1));
   const pendingSuggestions = tasks.filter((t) => t.suggestedBy);
   const detailTask = tasks.find((t) => t._id === detailId);
@@ -478,7 +512,7 @@ export default function ProjectPage() {
     { value: 'all', label: 'All', test: () => true },
     { value: 'mine', label: 'Assigned to me', test: isAssignee },
     { value: 'overdue', label: 'Overdue', test: isOverdue },
-    { value: 'unassigned', label: 'Unassigned', test: (t) => !t.assignee },
+    { value: 'unassigned', label: 'Unassigned', test: (t) => !personOf(t) },
     ...(pendingSuggestions.length ? [{ value: 'suggested', label: `Suggestions (${pendingSuggestions.length})`, test: (t) => t.suggestedBy }] : []),
   ];
   const activeFilter = FILTERS.find((f) => f.value === filter) || FILTERS[0];
@@ -560,7 +594,8 @@ export default function ProjectPage() {
           members={membersSorted}
           showDone={showDone}
           onShowDone={setShowDone}
-          canChangeStatus={(t) => canManage(t) || isAssignee(t)}
+          canChangeStatus={canMove}
+          personOf={personOf}
           onOpen={openTask}
           onStatus={changeStatus}
           onCommentAdded={onCommentAdded}
@@ -573,7 +608,31 @@ export default function ProjectPage() {
           <BoardProgress tasks={tasks} />
           <div className="board">
             {STATUSES.map((col) => {
-              const items = visibleTasks.filter((t) => t.status === col.value);
+              const isMine = (t) => personOf(t)?._id === user._id;
+              const items = visibleTasks
+                .filter((t) => t.status === col.value)
+                .sort((a, b) => isMine(b) - isMine(a)); // your own first
+              const renderCard = (t) => (
+                <TaskCard
+                  key={t._id}
+                  projectId={id}
+                  task={t}
+                  person={personOf(t)}
+                  isMine={isMine(t)}
+                  onFileAdded={onFileAdded}
+                  isOwner={isOwner}
+                  canManage={canManage(t)}
+                  canChangeStatus={canMove(t)}
+                  draggable={canMove(t)}
+                  justMoved={movedId === t._id}
+                  onOpen={openTask}
+                  onStatus={changeStatus}
+                  onEdit={startEdit}
+                  onDelete={removeTask}
+                  onSuggestion={respondToSuggestion}
+                  onDragStart={onDragStart}
+                />
+              );
               return (
                 <div
                   key={col.value}
@@ -590,25 +649,17 @@ export default function ProjectPage() {
                     {col.label} <span className="muted" style={{ fontWeight: 400 }}>({items.length})</span>
                   </div>
                   {items.length === 0 && <p className="column-empty">{filter === 'all' ? 'No tasks here.' : 'No matching tasks.'}</p>}
-                  {items.map((t) => (
-                    <TaskCard
-                      key={t._id}
-                      projectId={id}
-                      task={t}
-                      onFileAdded={onFileAdded}
-                      isOwner={isOwner}
-                      canManage={canManage(t)}
-                      canChangeStatus={isAssignee(t)}
-                      draggable={canManage(t) || isAssignee(t)}
-                      justMoved={movedId === t._id}
-                      onOpen={openTask}
-                      onStatus={changeStatus}
-                      onEdit={startEdit}
-                      onDelete={removeTask}
-                      onSuggestion={respondToSuggestion}
-                      onDragStart={onDragStart}
+                  {/* With a filter on, the person asked to see those tasks, so nothing is folded */}
+                  {items.length > 0 && col.value === 'todo' && filter === 'all' ? (
+                    <TodoGroups
+                      tasks={items}
+                      personOf={personOf}
+                      currentUserId={user._id}
+                      showTeammates={showTeammates}
+                      onToggle={() => changeShowTeammates(!showTeammates)}
+                      renderCard={renderCard}
                     />
-                  ))}
+                  ) : items.map(renderCard)}
                 </div>
               );
             })}
@@ -740,6 +791,7 @@ export default function ProjectPage() {
           onAttachmentCount={(change) => changeFileCount(detailTask._id, change)}
           onCommentCount={(total) => setCommentTotal(detailTask._id, total)}
           members={membersSorted}
+          person={personOf(detailTask)}
           highlightCommentId={params.get('comment')}
           onClose={closeTask}
         />
@@ -776,6 +828,9 @@ export default function ProjectPage() {
               <span>Assignee</span>
               <select className="select" value={form.assignee} onChange={(e) => setForm({ ...form, assignee: e.target.value })}>
                 <option value="">Unassigned</option>
+                {!editingId && project.members.length > 1 && (
+                  <option value={EVERYONE}>Everyone (a separate task for each member)</option>
+                )}
                 {membersSorted.map((m) => (
                   <option key={m.user._id} value={m.user._id}>
                     {m.user.name}{m.role === 'owner' && !isOwner ? ' (owner, as a suggestion)' : ''}
@@ -785,6 +840,12 @@ export default function ProjectPage() {
               {assigningToOwner && (
                 <small className="muted">You can't assign work to the owner directly. They'll get a suggestion to accept or decline.</small>
               )}
+              {form.assignee === EVERYONE && (
+                <small className="muted">
+                  Each of the {project.members.length} members gets their own copy to move through the stages.
+                  {!isOwner && " The owner's copy waits as a suggestion for them to accept."}
+                </small>
+              )}
             </label>
             <label className="field">
               <span>Deadline</span>
@@ -793,7 +854,7 @@ export default function ProjectPage() {
             {formError && <p className="alert">{formError}</p>}
             <div className="form-actions">
               <button type="button" className="btn" onClick={closeTaskForm}>Cancel</button>
-              <button type="submit" className="btn btn-primary">{editingId ? 'Save changes' : assigningToOwner ? 'Add and suggest' : 'Add task'}</button>
+              <button type="submit" className="btn btn-primary">{editingId ? 'Save changes' : assigningToOwner ? 'Add and suggest' : form.assignee === EVERYONE ? 'Add for everyone' : 'Add task'}</button>
             </div>
           </form>
         </Modal>

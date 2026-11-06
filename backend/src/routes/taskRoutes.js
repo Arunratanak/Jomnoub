@@ -10,6 +10,7 @@ const router = Router({ mergeParams: true });
 
 router.get('/', tasks.list);
 router.post('/', createTaskLimiter, tasks.create);
+router.post('/assign-all', createTaskLimiter, tasks.createForEveryone);
 router.patch('/:taskId', loadTask, tasks.update);
 router.delete('/:taskId', loadTask, tasks.remove);
 

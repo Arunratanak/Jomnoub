@@ -13,6 +13,8 @@ export const createTaskSchema = z.object({
 
 export const updateTaskSchema = createTaskSchema.partial();
 
+export const assignToAllSchema = createTaskSchema.omit({ status: true, assignee: true });
+
 export const createSubtaskSchema = z.object({
   title: z.string().trim().min(1).max(200),
   note: z.string().trim().max(1000).optional(),

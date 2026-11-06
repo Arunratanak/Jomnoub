@@ -32,7 +32,7 @@ Sign A back in before continuing.
 | 2.2 | A: open it, add a task due **tomorrow**, assigned to A | Task appears in To do on the Board tab; the Progress tab shows 1 task |
 | 2.3 | A: add a task due **yesterday**, assigned to A | Red border and "Overdue"; the Progress tab's Overdue count = 1 |
 | 2.4 | A: add a task named `<img src=x onerror=alert(1)>` | Shown as plain text; no alert pops up |
-| 2.5 | A: click Start on a task | It moves column; the card shows "Started by" and A's name; "Moved to In progress" appears with Undo; Activity shows "moved ... from To do to In progress" |
+| 2.5 | A: click Start on a task assigned to A | It moves column; the card shows "Started by" and A's name; "Moved to In progress" appears with Undo; Activity shows "moved ... from To do to In progress" |
 | 2.5a | A: click Mark complete, then Undo | It goes to Done with "Completed by", the progress bar rises, then Undo returns it to In progress and the bar drops |
 | 2.5b | A: click the back arrow on an In progress card; drag a card to Done; click Reopen | It returns to To do with its record cleared; dragging works and offers Undo; Reopen returns it to In progress |
 | 2.6 | A: click the bell | Badge shows 2 (the overdue and the tomorrow task, both assigned to A); dropdown lists them |
@@ -209,7 +209,24 @@ Use two accounts in the same project (A in a normal window, B in a private windo
 | 14.14 | Open a task, press the browser's Back button; copy a task's address into a new tab | Back closes it; the address opens that task |
 | 14.15 | Open an old `/projects/<id>/timeline` link | It goes to the Timeline tab |
 
-## 15. Cleanup
+## 15. Assign to all, the status rule, and your tasks first
+
+Use the same two accounts, A (owner) and B (member).
+
+| # | Step | Expected |
+|---|---|---|
+| 15.1 | A: new task, choose Everyone as the assignee | One task per member; each person is notified; Activity has one "for all" entry |
+| 15.2 | B: new task, choose Everyone | Members get their copies; the owner's copy shows the owner's name and "waiting to accept" |
+| 15.3 | B: new task, choose the owner | The card shows the owner's name, not Unassigned; the Unassigned filter doesn't list it; the Progress chart counts it for the owner |
+| 15.4 | A: look at a task assigned to B | No Start or Mark complete button, and it can't be dragged; A can still edit, reassign or delete it |
+| 15.5 | B: move their own task through the stages | It works; a task assigned to someone else offers no way to move it |
+| 15.6 | A: on an unassigned task | A can still move it |
+| 15.7 | Either: open the board with All selected | To do shows "Your tasks" first, then Unassigned, then a button for teammates' tasks with their count and any overdue |
+| 15.8 | Click the button, refresh | The list opens, and stays open after refreshing |
+| 15.9 | Choose the Overdue filter | Matching tasks all show, none folded |
+| 15.10 | A: with the list folded, add a task for B | The list opens, so the new task can be seen |
+
+## 16. Cleanup
 
 - A: delete "Test project" and "Private project" (Settings tab > Delete project on each).
 - If you used demo data: `npm run seed:clear` in `backend`.

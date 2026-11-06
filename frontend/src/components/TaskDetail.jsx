@@ -61,7 +61,7 @@ function SubtaskItem({ subtask: s, canEdit, onToggle, onSave, onDelete }) {
 }
 
 // Full view of one task, including its subtasks
-export default function TaskDetail({ projectId, task: t, user, isOwner, members, highlightCommentId, canEditSubtasks, onUpdated, onAttachmentCount, onCommentCount, onClose }) {
+export default function TaskDetail({ projectId, task: t, person, user, isOwner, members, highlightCommentId, canEditSubtasks, onUpdated, onAttachmentCount, onCommentCount, onClose }) {
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [showNote, setShowNote] = useState(false);
@@ -116,7 +116,7 @@ export default function TaskDetail({ projectId, task: t, user, isOwner, members,
       <div className="detail-meta">
         <span className="status-pill"><span className="dot" style={{ background: status?.color }} aria-hidden="true" /> {status?.label}</span>
         {statusNote(t) && <small className="muted">{statusNote(t)}</small>}
-        <span className="task-people"><Avatar user={t.assignee} size={22} /> {t.assignee ? t.assignee.name : 'Unassigned'}</span>
+        <span className="task-people"><Avatar user={person} size={22} /> {person ? person.name : 'Unassigned'}{t.suggestedBy && <small className="muted"> · waiting to accept</small>}</span>
         {t.deadline && (
           <span className={`due${overdue ? ' overdue' : ''}`}>
             {overdue ? 'Overdue · was due' : 'Due'} {new Date(t.deadline).toLocaleDateString(undefined, { timeZone: 'UTC' })}
