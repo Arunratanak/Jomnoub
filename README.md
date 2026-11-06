@@ -10,6 +10,7 @@ Built as a full-stack course final project.
 - Two ways in: **Google sign-in** (the backend verifies Google's ID token) or **email and password** (stored in our database as a salted scrypt hash, never as the password itself). Both end with the same session: a JWT in an httpOnly cookie, valid for 7 days.
 - **Email verification and password reset:** sign-up sends a link to confirm the address (valid 24 hours), and "Forgot password?" sends a reset link (valid 1 hour). Links work once, and only a hash of each token is stored. A reset ends the account's other sessions.
 - Until a password account verifies its address, it can only join projects by invite link and gets no reminder emails. If the real owner of an address signs in with Google before then, the account is linked to Google, its password is removed and its other sessions end.
+- **Profile page:** change your name, upload or remove a photo (or go back to your Google photo), see your account details, and see your task counts for each project. Signing in with Google never replaces a name or photo you chose. Uploaded photos can only be seen by you and people who share a project with you.
 
 **Projects and teams**
 - Create, rename and delete projects. The creator is the owner.
@@ -160,6 +161,9 @@ All routes are under `/api`. Everything requires login except `GET /status`, `PO
 | `GET`, `POST /projects/:projectId/messages`, `DELETE .../messages/:messageId` | members (delete: author or owner) |
 | `GET /invites/:token`, `POST /invites/:token/accept` | any logged-in user with a valid link |
 | `GET /my-tasks` | your assigned tasks |
+| `GET`, `PATCH /profile` | your details and work summary; change your name |
+| `POST`, `DELETE /profile/photo`, `POST /profile/photo/google` | change your photo (the body of the `POST` is the JPEG itself) |
+| `GET /profile/photos/:userId` | yourself or anyone who shares a project with you |
 | `POST /cron/reminders[?dryRun=true]` | GitHub Actions (CRON_SECRET) |
 
 ## Local setup

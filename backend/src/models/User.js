@@ -7,7 +7,13 @@ const userSchema = new mongoose.Schema(
     googleId: { type: String },
     email: { type: String, required: true, lowercase: true, trim: true },
     name: { type: String, required: true, trim: true },
+    // A Google address, or our own /profile/photos/... path for an uploaded photo
     picture: String,
+    // Set once the person chooses their own, so signing in with Google keeps their choice
+    customName: { type: Boolean, default: false },
+    customPicture: { type: Boolean, default: false },
+    googlePicture: String, // lets someone go back to their Google photo
+    photoFileId: mongoose.Schema.Types.ObjectId, // the uploaded photo in file storage
     // Only for email + password accounts. A scrypt hash, never the password.
     // select: false keeps it out of every query unless explicitly requested.
     passwordHash: { type: String, select: false },
@@ -37,6 +43,10 @@ userSchema.set('toJSON', {
     delete ret.googleId;
     delete ret.passwordHash;
     delete ret.tokenVersion;
+    delete ret.customName;
+    delete ret.customPicture;
+    delete ret.googlePicture;
+    delete ret.photoFileId;
     delete ret.__v;
     return ret;
   },

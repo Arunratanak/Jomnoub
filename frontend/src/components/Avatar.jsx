@@ -1,21 +1,25 @@
 import { useState } from 'react';
 import { avatarColor, firstLetter, projectGradient } from '../utils/colors';
 
-// A person's Google picture, or a colored circle with their first initial
-export default function Avatar({ user, size = 32 }) {
-  const [broken, setBroken] = useState(false);
-  const name = user?.name || 'Unassigned';
+// Uploaded photos are stored as a path on our API; Google's are full addresses
+const pictureUrl = (picture) => (picture.startsWith('/') ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}${picture}` : picture);
 
-  if (user?.picture && !broken) {
+// A person's photo, or a colored circle with their first initial
+export default function Avatar({ user, size = 32 }) {
+  const [brokenPicture, setBrokenPicture] = useState(null);
+  const name = user?.name || 'Unassigned';
+  const picture = user?.picture;
+
+  if (picture && picture !== brokenPicture) {
     return (
       <img
         className="avatar"
-        src={user.picture}
+        src={pictureUrl(picture)}
         alt=""
         width={size}
         height={size}
         referrerPolicy="no-referrer"
-        onError={() => setBroken(true)}
+        onError={() => setBrokenPicture(picture)}
       />
     );
   }

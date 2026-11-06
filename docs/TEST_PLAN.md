@@ -242,7 +242,22 @@ Use the same two accounts, A (owner) and B (member).
 | 16.6 | A (owner): look at any task | A can edit and delete it |
 | 16.7 | B: delete a task A created | A's bell shows "deleted task" with its name; clicking it opens the project |
 
-## 17. Cleanup
+## 17. Profile
+
+| # | Step | Expected |
+|---|---|---|
+| 17.1 | A: click your picture at the top right, then Your profile | The page shows your details, task counts and projects |
+| 17.2 | A: change your name and save | The menu updates straight away; B sees the new name after refreshing |
+| 17.3 | A (Google account): log out and sign in with Google again | The name you chose is kept |
+| 17.4 | A: upload a photo that isn't square | It appears as a circle, cropped from the middle, at the top right and on your profile |
+| 17.5 | B: refresh the project | A's new photo shows on members, task cards and the assignee choices |
+| 17.6 | A (Google account): log out and sign in with Google again | The uploaded photo is kept |
+| 17.7 | A (Google account): click Use Google photo | The Google photo comes back |
+| 17.8 | A: click Remove photo and confirm, then sign in with Google again | Your initial shows, and stays after signing in |
+| 17.9 | A: choose a `.txt` or `.pdf` file as a photo | It's refused with a clear message, and the photo doesn't change |
+| 17.10 | A: copy your uploaded photo's address, then open it as an account that shares no project with you | "Not found" |
+
+## 18. Cleanup
 
 - A: delete "Test project" and "Private project" (Settings tab > Delete project on each).
 - If you used demo data: `npm run seed:clear` in `backend`.

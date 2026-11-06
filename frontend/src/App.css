@@ -136,6 +136,23 @@ ul { margin: 0; padding: 0; list-style: none; }
 .check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
 .check input { width: 16px; height: 16px; accent-color: var(--accent); }
 
+/* Profile page */
+.profile-card { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.profile-card .avatar { flex: none; object-fit: cover; }
+.profile-photo-actions { display: flex; flex: 1 1 200px; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.profile-photo-hint { flex-basis: 100%; }
+.profile-details { display: grid; gap: 10px; margin: 0; }
+.profile-details dt { color: var(--text-2); font-size: 13px; }
+.profile-details dd { margin: 0; overflow-wrap: anywhere; }
+.profile-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.profile-tiles { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); }
+.profile-project { color: var(--text); padding-inline: 8px; border-radius: 8px; }
+.profile-project:hover { background: var(--surface-2); text-decoration: none; }
+li:last-child > .profile-project { border-bottom: 0; }
+.profile-project .row-main { display: grid; }
+.profile-project-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile-project .due { display: inline; }
+
 /* Choosing who a task is for */
 .assignee-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); align-content: start; gap: 8px; max-height: 292px; padding: 3px; margin: -3px; overflow-y: auto; }
 .assignee-option { position: relative; display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 56px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; color: var(--text); cursor: pointer; transition: background-color 0.15s, border-color 0.15s; }

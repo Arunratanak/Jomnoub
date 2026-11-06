@@ -9,7 +9,7 @@ import Avatar, { ProjectMark } from './Avatar';
 import Logo from './Logo';
 import NotificationBell from './NotificationBell';
 import ThemeToggle from './ThemeToggle';
-import { CloseIcon, HomeIcon, LogoutIcon, MenuIcon, SearchIcon, TasksIcon } from './Icons';
+import { CloseIcon, HomeIcon, LogoutIcon, MenuIcon, SearchIcon, TasksIcon, UserIcon } from './Icons';
 
 const COLLAPSE_KEY = 'jomnoub-sidebar-collapsed';
 const navClass = ({ isActive }) => `nav-item${isActive ? ' active' : ''}`;
@@ -44,6 +44,7 @@ function UserMenu() {
             </div>
           </div>
           <hr className="menu-sep" />
+          <Link to="/profile" className="menu-item" onClick={close}><UserIcon size={20} /> Your profile</Link>
           <button type="button" className="menu-item" onClick={logout}><LogoutIcon size={20} /> Log out</button>
         </div>
       )}

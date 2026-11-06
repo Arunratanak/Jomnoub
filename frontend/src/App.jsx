@@ -7,6 +7,7 @@ import Privacy from "./pages/Privacy.jsx";
 import ProjectPage from "./pages/ProjectPage";
 import MyTasks from "./pages/MyTasks";
 import InvitePage from "./pages/InvitePage";
+import Profile from "./pages/Profile";
 import VerifyEmail from "./pages/VerifyEmail";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -48,6 +49,7 @@ export default function App() {
       >
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/my-tasks" element={<MyTasks />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="/projects/:id" element={<ProjectRoute />} />
         <Route path="/projects/:id/timeline" element={<OldTimelineLink />} />
       </Route>

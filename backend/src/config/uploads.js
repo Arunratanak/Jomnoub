@@ -6,6 +6,9 @@ export const MAX_FILES_PER_TASK = 20;
 export const MAX_PROJECT_BYTES = 500 * MB;
 export const MAX_USER_BYTES = 1024 * MB;
 
+// Profile photos are shrunk to a small JPEG in the browser, so this is plenty
+export const MAX_PHOTO_BYTES = 512 * 1024;
+
 // Allowlist: extension -> the type we serve it as. The server decides the type, never
 // the browser. Anything that can run in a browser (HTML, SVG, JavaScript) is left out,
 // because files are served from our own domain.

@@ -36,6 +36,11 @@ export default function Privacy() {
           password. We never store the password itself.
         </li>
         <li>
+          <strong>Profile photo.</strong> If you upload a photo, your browser first shrinks it
+          to a small square, which leaves out details such as where it was taken. Only you and
+          people in your projects can see it, and it is deleted when you remove or replace it.
+        </li>
+        <li>
           <strong>Content you create.</strong> Projects, tasks, subtasks, descriptions,
           deadlines, assignments, comments, chat messages, uploaded files, and team membership that you or your
           teammates enter in the app. We also keep in-app notifications about this activity for up to 90 days.

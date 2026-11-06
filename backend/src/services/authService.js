@@ -4,6 +4,7 @@ import User from '../models/User.js';
 import { JWT_ALGORITHM, JWT_EXPIRES_IN } from '../config/auth.js';
 import { ConflictError, UnauthorizedError } from '../exceptions/HttpError.js';
 import { fakeVerify, hashPassword, verifyPassword } from './passwordService.js';
+import { deleteFile } from './storageService.js';
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const BAD_LOGIN = 'Incorrect email or password';
@@ -22,37 +23,53 @@ export async function verifyGoogleCredential(credential) {
   return payload;
 }
 
+// Google's details are the default, but never replace a name or photo the person chose
+function applyGoogleProfile(user, payload, email) {
+  if (!user.customName) user.name = payload.name || email;
+  if (!user.customPicture) user.picture = payload.picture;
+  user.googlePicture = payload.picture;
+}
+
 // Creates the user on first sign-in, refreshes name/email/picture afterwards.
 // If a password account already uses this email, Google has just proved who really
 // owns the address, so it's linked. If that account was never email-verified, someone
 // else could have created it: the password is removed and any existing sessions end,
-// which locks out anyone who registered with this person's email.
+// which locks out anyone who registered with this person's email, and removes the name
+// and photo they set.
 export async function upsertGoogleUser(payload) {
   const email = payload.email.toLowerCase();
-  const profile = { name: payload.name || email, picture: payload.picture };
 
   let user = await User.findOne({ googleId: payload.sub });
   if (user) {
     // Keep the old address if Google's new one belongs to another account
     if (user.email !== email && !(await User.exists({ email, _id: { $ne: user._id } }))) user.email = email;
-    Object.assign(user, profile);
+    applyGoogleProfile(user, payload, email);
     return user.save();
   }
 
   user = await User.findOne({ email }).select('+passwordHash');
   if (user) {
     user.googleId = payload.sub;
-    Object.assign(user, profile);
     // A password set by someone who has proved they own this email is kept
-    if (user.passwordHash && !user.emailVerified) {
+    const untrusted = user.passwordHash && !user.emailVerified;
+    const oldPhoto = untrusted ? user.photoFileId : null;
+    if (untrusted) {
       user.passwordHash = undefined;
       user.tokenVersion += 1;
+      user.customName = false;
+      user.customPicture = false;
+      user.photoFileId = undefined;
     }
-    return user.save();
+    applyGoogleProfile(user, payload, email);
+    await user.save();
+    if (oldPhoto) await deleteFile(oldPhoto);
+    return user;
   }
 
   try {
-    return await User.create({ googleId: payload.sub, email, ...profile });
+    return await User.create({
+      googleId: payload.sub, email, name: payload.name || email, picture: payload.picture, googlePicture: payload.picture,
+    });
   } catch (err) {
     if (err.code !== 11000) throw err;
     return User.findOne({ googleId: payload.sub }); // two simultaneous first sign-ins
