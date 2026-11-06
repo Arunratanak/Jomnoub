@@ -86,10 +86,12 @@ async function seed() {
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0); // deadlines are UTC dates, like the app stores them
   const tasks = await Task.insertMany(
-    TASKS.map(([title, status, assignee, days, creator]) => ({
+    TASKS.map(([title, status, assignee, days, creator], i) => ({
       project: project._id,
       title,
       status,
+      ...(status !== 'todo' ? { startedAt: new Date(Date.now() - (3 + i % 4) * DAY), startedBy: people[assignee || creator]._id } : {}),
+      ...(status === 'done' ? { completedAt: new Date(Date.now() - (1 + i % 3) * DAY), completedBy: people[assignee || creator]._id } : {}),
       assignee: assignee ? people[assignee]._id : null,
       deadline: days === null ? null : new Date(today.getTime() + days * DAY),
       createdBy: people[creator]._id,

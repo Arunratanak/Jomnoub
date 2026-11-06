@@ -12,6 +12,11 @@ const taskSchema = new mongoose.Schema(
     title: { type: String, required: true, trim: true, maxlength: 120 },
     description: { type: String, trim: true, maxlength: 1000, default: '' },
     status: { type: String, enum: ['todo', 'in-progress', 'done'], default: 'todo' },
+    // Who moved the task along and when. Set only by the server when the status changes.
+    startedAt: { type: Date, default: null },
+    startedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    completedAt: { type: Date, default: null },
+    completedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     deadline: { type: Date, default: null },
     assignee: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CONFIRM_EVENT, TOAST_EVENT } from '../utils/feedback';
 
 const TOAST_MS = 4000;
+const ACTION_TOAST_MS = 8000; // long enough to read it and press Undo
 
 // Renders toasts and the confirm dialog requested through utils/feedback.js
 export default function FeedbackHost() {
@@ -13,8 +14,9 @@ export default function FeedbackHost() {
   useEffect(() => {
     const onToast = (e) => {
       const id = nextId.current++;
-      setToasts((list) => [...list, { id, ...e.detail }]);
-      setTimeout(() => setToasts((list) => list.filter((t) => t.id !== id)), TOAST_MS);
+      // Only the latest action stays on offer: an older Undo would no longer match what's on screen
+      setToasts((list) => [...list.filter((t) => !(e.detail.action && t.action)), { id, ...e.detail }]);
+      setTimeout(() => setToasts((list) => list.filter((t) => t.id !== id)), e.detail.action ? ACTION_TOAST_MS : TOAST_MS);
     };
     const onConfirm = (e) => setDialog(e.detail);
     window.addEventListener(TOAST_EVENT, onToast);
@@ -48,7 +50,23 @@ export default function FeedbackHost() {
   return (
     <>
       <div className="toasts" role="status" aria-live="polite">
-        {toasts.map((t) => <div key={t.id} className={`toast${t.type === 'error' ? ' toast-error' : ''}`}>{t.message}</div>)}
+        {toasts.map((t) => (
+          <div key={t.id} className={`toast${t.type === 'error' ? ' toast-error' : ''}`}>
+            {t.message}
+            {t.action && (
+              <button
+                type="button"
+                className="toast-action"
+                onClick={() => {
+                  setToasts((list) => list.filter((x) => x.id !== t.id));
+                  t.action.onClick();
+                }}
+              >
+                {t.action.label}
+              </button>
+            )}
+          </div>
+        ))}
       </div>
 
       {dialog && (

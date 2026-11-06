@@ -1,17 +1,22 @@
 import { useRef, useState } from 'react';
 import Avatar from './Avatar';
-import { AlertIcon, CalendarIcon, CheckIcon, CommentIcon, EditIcon, PaperclipIcon, TrashIcon } from './Icons';
+import { AlertIcon, CalendarIcon, CheckIcon, CommentIcon, EditIcon, PaperclipIcon, PlayIcon, TrashIcon, UndoIcon } from './Icons';
 import { isOverdue } from '../utils/dates';
 import { ACCEPT } from '../utils/files';
-import { STATUSES } from '../utils/taskStatus';
+import { NEXT_STEP, statusNote } from '../utils/taskStatus';
 import useTaskFileUpload from '../utils/useTaskFileUpload';
+
+const STEP_ICONS = { todo: PlayIcon, 'in-progress': CheckIcon, done: UndoIcon };
 
 // One card on the project board
 export default function TaskCard({
-  projectId, task: t, isOwner, canManage, canChangeStatus, draggable,
+  projectId, task: t, isOwner, canManage, canChangeStatus, draggable, justMoved,
   onOpen, onStatus, onEdit, onDelete, onSuggestion, onDragStart, onFileAdded,
 }) {
   const overdue = isOverdue(t);
+  const next = NEXT_STEP[t.status];
+  const StepIcon = STEP_ICONS[t.status];
+  const note = statusNote(t);
   const subtasks = t.subtasks || [];
   const doneCount = subtasks.filter((s) => s.done).length;
   const inputRef = useRef(null);
@@ -24,7 +29,7 @@ export default function TaskCard({
 
   return (
     <div
-      className={`task-card${overdue ? ' overdue' : ''}${draggable ? ' draggable' : ''}${fileOver ? ' file-over' : ''}`}
+      className={`task-card status-${t.status}${overdue ? ' overdue' : ''}${draggable ? ' draggable' : ''}${fileOver ? ' file-over' : ''}${justMoved ? ' just-moved' : ''}`}
       draggable={draggable && !uploading}
       onDragStart={draggable ? (e) => onDragStart(e, t) : undefined}
       onDragOver={(e) => {
@@ -42,8 +47,33 @@ export default function TaskCard({
         addFiles(e.dataTransfer.files);
       }}
     >
-      <button type="button" className="task-title-btn" onClick={() => onOpen(t)}>{t.title}</button>
+      <button type="button" className={`task-title-btn${t.status === 'done' ? ' done-title' : ''}`} onClick={() => onOpen(t)}>{t.title}</button>
       {t.description && <div className="task-desc">{t.description}</div>}
+
+      {t.status === 'in-progress' && (
+        <div className="status-line">
+          <span className="status-badge">In progress</span>
+          {note && <small className="muted">{note}</small>}
+          {/* Dragging doesn't work by keyboard or on phones, so this needs its own control */}
+          {(canManage || canChangeStatus) && (
+            <button
+              type="button"
+              className="icon-btn icon-btn-sm status-back"
+              onClick={() => onStatus(t, 'todo')}
+              aria-label={`Move ${t.title} back to To do`}
+              title="Back to To do"
+            >
+              <UndoIcon size={16} />
+            </button>
+          )}
+        </div>
+      )}
+      {t.status === 'done' && (
+        <div className="status-line status-line-done">
+          <CheckIcon size={15} />
+          <small>{note || 'Completed'}</small>
+        </div>
+      )}
 
       {t.suggestedBy && (
         <div className="suggestion">
@@ -106,14 +136,14 @@ export default function TaskCard({
 
       <div className="task-actions">
         {(canManage || canChangeStatus) && (
-          <select
-            className="select select-sm"
-            value={t.status}
-            onChange={(e) => onStatus(t, e.target.value)}
-            aria-label={`Status of ${t.title}`}
+          <button
+            type="button"
+            className={`btn btn-sm next-step${t.status === 'in-progress' ? ' btn-primary' : ''}`}
+            onClick={() => onStatus(t, next.status)}
+            aria-label={`${next.label}: ${t.title}`}
           >
-            {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-          </select>
+            <StepIcon size={15} /> {next.label}
+          </button>
         )}
         <button
           type="button"

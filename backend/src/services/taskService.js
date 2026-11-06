@@ -16,7 +16,21 @@ const populateTask = (task) =>
   task.populate([
     { path: 'assignee', select: ASSIGNEE_FIELDS },
     { path: 'suggestedBy', select: 'name' },
+    { path: 'startedBy', select: 'name' },
+    { path: 'completedBy', select: 'name' },
   ]);
+
+// The record of who moved a task and when. Back to To do starts over; reopening a
+// finished task clears the completion but keeps when work first started.
+function statusRecord(task, status, userId) {
+  if (status === 'todo') return { startedAt: null, startedBy: null, completedAt: null, completedBy: null };
+  if (status === 'done') return { completedAt: new Date(), completedBy: userId };
+  return {
+    completedAt: null,
+    completedBy: null,
+    ...(task.startedAt ? {} : { startedAt: new Date(), startedBy: userId }),
+  };
+}
 
 const notifyAssigned = ({ project, user, task }) =>
   notify([task.assignee._id], { actor: user._id, type: 'assigned', message: `assigned you to ${quote(task.title)}`, project: project._id, task: task._id });
@@ -39,7 +53,9 @@ export function listTasks(project) {
   return Task.find({ project: project._id })
     .sort({ deadline: 1, createdAt: -1 })
     .populate('assignee', ASSIGNEE_FIELDS)
-    .populate('suggestedBy', 'name');
+    .populate('suggestedBy', 'name')
+    .populate('startedBy', 'name')
+    .populate('completedBy', 'name');
 }
 
 // Only the owner can give work to the owner; a member's request becomes a suggestion
@@ -53,6 +69,7 @@ export async function createTask({ project, role, user }, data) {
   const task = await Task.create({
     ...data,
     ...(suggest ? { assignee: null, suggestedBy: user._id, suggestedAt: new Date() } : {}),
+    ...(data.status ? statusRecord({}, data.status, user._id) : {}),
     project: project._id,
     createdBy: user._id,
   });
@@ -97,6 +114,9 @@ export async function updateTask({ project, role, user, task }, updates) {
     }
   }
 
+  if (updates.status && updates.status !== oldStatus) {
+    Object.assign(fields, statusRecord(task, updates.status, user._id));
+  }
   Object.assign(task, fields);
   await task.save();
   await populateTask(task);

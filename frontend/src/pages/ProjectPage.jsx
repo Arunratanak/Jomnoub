@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'reac
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import Avatar, { ProjectMark } from '../components/Avatar';
+import BoardProgress from '../components/BoardProgress';
 import ChatPanel from '../components/ChatPanel';
 import Loading from '../components/Loading';
 import ActivityPanel from '../components/ActivityPanel';
@@ -17,13 +18,14 @@ import { projectGradient } from '../utils/colors';
 import { isOverdue } from '../utils/dates';
 import { notifyProjectsChanged, notifyTasksChanged } from '../utils/events';
 import { confirmDialog, toast } from '../utils/feedback';
-import { STATUSES } from '../utils/taskStatus';
+import { STATUSES, statusLabel } from '../utils/taskStatus';
 import useTitle from '../utils/useTitle';
 
 // The chart library is large, so it only loads when the Progress tab is opened
 const ProjectStats = lazy(() => import('../components/ProjectStats'));
 
 const UNREAD_CHECK_MS = 30000;
+const MOVED_HIGHLIGHT_MS = 900;
 const emptyForm = { title: '', description: '', assignee: '', deadline: '' };
 const errorMessage = (err, fallback) => err.response?.data?.error || fallback;
 
@@ -57,6 +59,8 @@ export default function ProjectPage() {
   const [activityError, setActivityError] = useState(false);
   const [unread, setUnread] = useState(false);
   const [tasksLoaded, setTasksLoaded] = useState(false);
+  const [movedId, setMovedId] = useState(null); // the card that just changed column
+  const movedTimer = useRef(null);
   const checkedTask = useRef(null);
   const draggedId = useRef(null);
   const tab = params.get('tab') || 'board';
@@ -227,16 +231,31 @@ export default function ProjectPage() {
     setTaskFormOpen(true);
   };
 
-  const changeStatus = async (t, status) => {
+  const changeStatus = async (t, status, { isUndo = false } = {}) => {
     if (t.status === status) return;
+    const previous = t.status;
     setError('');
     setTasks((list) => list.map((x) => (x._id === t._id ? { ...x, status } : x))); // feels instant
+    setMovedId(t._id);
+    clearTimeout(movedTimer.current);
+    movedTimer.current = setTimeout(() => setMovedId(null), MOVED_HIGHLIGHT_MS);
     try {
       await api.patch(`/projects/${id}/tasks/${t._id}`, { status });
       notifyTasksChanged();
+      if (isUndo) {
+        toast(`Moved back to ${statusLabel(status)}.`);
+      } else {
+        toast(`Moved to ${statusLabel(status)}.`, 'success', {
+          label: 'Undo',
+          onClick: () => changeStatus({ ...t, status }, previous, { isUndo: true }),
+        });
+      }
       await loadTasks();
     } catch (err) {
-      setError(errorMessage(err, 'Could not update the status.'));
+      const message = errorMessage(err, 'Could not update the status.');
+      // Undo can be pressed after leaving this page, where an inline error wouldn't show
+      if (isUndo) toast(message, 'error');
+      else setError(message);
       loadTasks().catch(() => {});
     }
   };
@@ -551,6 +570,7 @@ export default function ProjectPage() {
 
       {tab === 'board' && (
         <>
+          <BoardProgress tasks={tasks} />
           <div className="board">
             {STATUSES.map((col) => {
               const items = visibleTasks.filter((t) => t.status === col.value);
@@ -580,6 +600,7 @@ export default function ProjectPage() {
                       canManage={canManage(t)}
                       canChangeStatus={isAssignee(t)}
                       draggable={canManage(t) || isAssignee(t)}
+                      justMoved={movedId === t._id}
                       onOpen={openTask}
                       onStatus={changeStatus}
                       onEdit={startEdit}

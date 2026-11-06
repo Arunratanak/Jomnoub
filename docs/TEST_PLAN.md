@@ -32,7 +32,9 @@ Sign A back in before continuing.
 | 2.2 | A: open it, add a task due **tomorrow**, assigned to A | Task appears in To do on the Board tab; the Progress tab shows 1 task |
 | 2.3 | A: add a task due **yesterday**, assigned to A | Red border and "Overdue"; the Progress tab's Overdue count = 1 |
 | 2.4 | A: add a task named `<img src=x onerror=alert(1)>` | Shown as plain text; no alert pops up |
-| 2.5 | A: change a task's status to In progress | It moves column; Activity shows "moved ... from To do to In progress" |
+| 2.5 | A: click Start on a task | It moves column; the card shows "Started by" and A's name; "Moved to In progress" appears with Undo; Activity shows "moved ... from To do to In progress" |
+| 2.5a | A: click Mark complete, then Undo | It goes to Done with "Completed by", the progress bar rises, then Undo returns it to In progress and the bar drops |
+| 2.5b | A: click the back arrow on an In progress card; drag a card to Done; click Reopen | It returns to To do with its record cleared; dragging works and offers Undo; Reopen returns it to In progress |
 | 2.6 | A: click the bell | Badge shows 2 (the overdue and the tomorrow task, both assigned to A); dropdown lists them |
 | 2.7 | A: open the Timeline tab | Overdue group first, then dates, then No deadline |
 
@@ -52,8 +54,8 @@ Sign A back in before continuing.
 | # | Step | Expected |
 |---|---|---|
 | 4.1 | B: look at the project page | No Settings tab (edit/delete project); on the Members tab, no invite link panel or Remove buttons |
-| 4.2 | B: on a task created by A and not assigned to B | No status dropdown, no Edit or Delete |
-| 4.3 | A: assign a task to B | B (after refresh) sees only the status dropdown on it |
+| 4.2 | B: on a task created by A and not assigned to B | No Start, Mark complete or Reopen button, no Edit or Delete |
+| 4.3 | A: assign a task to B | B (after refresh) can move it along (Start, Mark complete), but has no Edit or Delete |
 | 4.4 | B: change that task to Done | Works; A sees it moved and the activity entry |
 | 4.5 | B: create a task | B can edit and delete their own task |
 

@@ -5,7 +5,7 @@ import { CalendarIcon, CheckIcon, CommentIcon, PaperclipIcon } from './Icons';
 import { toast } from '../utils/feedback';
 import { ACCEPT } from '../utils/files';
 import { OVERDUE, NO_DEADLINE, utcDay, groupTasks } from '../utils/timeline';
-import { STATUSES } from '../utils/taskStatus';
+import { STATUSES, statusNote } from '../utils/taskStatus';
 import useTaskFileUpload from '../utils/useTaskFileUpload';
 
 function dayLabel(key, todayKey, tomorrowKey) {
@@ -49,6 +49,7 @@ function TimelineItem({ task: t, overdue, projectId, user, members, canChangeSta
         {subtasks.length > 0 && (
           <span className="due"><CheckIcon size={14} /> {doneSubtasks}/{subtasks.length}</span>
         )}
+        {statusNote(t) && <small className="muted">{statusNote(t)}</small>}
       </div>
 
       {uploading && (

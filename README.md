@@ -21,6 +21,7 @@ Built as a full-stack course final project.
 - The owner or the task's creator can edit and delete a task; its assignee can change only its status.
 - **Suggestions:** members can't assign work to the owner. Choosing the owner creates a suggestion, and the task stays unassigned until the owner accepts or declines it (on the board, in My Tasks, or from the bell).
 - **Subtasks:** each task can have up to 50 subtasks with notes and a done checkbox. The owner, the task's creator and its assignee can change them; other members can read them.
+- **Moving a task along:** each card shows its next step (Start, Mark complete, Reopen), and an In progress card can go back to To do. Stages look different at a glance, cards record who started and completed them and when, and every move can be undone from the confirmation message.
 - **Comments and @mentions:** any member can comment on a task. Typing `@` lists the project's members, and the mentioned person is notified. The task's assignee, creator and earlier commenters are told about new comments. Authors can delete their own comments and the owner can delete any. A task's address includes `?task=<id>`, so tasks can be linked to directly.
 - **Attachments:** members can add documents, spreadsheets, slides, images and zip files to a task (up to 10 MB each, 20 per task, 500 MB per project and 1 GB per person). Files are stored in a private Cloudflare R2 bucket, and every download goes through the API's membership checks. Without R2 settings, they go in the database instead, which suits local development.
 - Board view with three status columns, filters (assigned to me, overdue, unassigned, suggestions) and drag and drop; overdue tasks are highlighted.
@@ -29,6 +30,7 @@ Built as a full-stack course final project.
 - Each project has a chat room for its members. Messages appear within about 5 seconds, with an unread dot on the tab. Authors can delete their own messages, and the owner can delete any.
 
 **Tracking**
+- **Progress bar** above the board: tasks complete out of the total, and how many are in progress.
 - **Progress stats** per project: completion %, counts by status, overdue, due this week, and a workload chart per member (Recharts).
 - **Timeline tab**: tasks grouped as Overdue, then by deadline date, then No deadline. Each task can be opened, commented on (with @mentions), given files or moved to another status right there, and the board's filters apply.
 - **Activity log**: the last 30 events in a project (task created, moved, assigned, deleted; member joined, added, removed, left).

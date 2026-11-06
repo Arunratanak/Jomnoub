@@ -440,6 +440,36 @@ details summary { cursor: pointer; color: var(--text-2); font-size: 13px; }
 .subtask-add { display: grid; gap: 8px; margin-top: 12px; }
 .subtask-add-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
+/* ---------- Task stages ---------- */
+.task-card.status-in-progress { border-left: 3px solid var(--status-progress); }
+.task-card.status-done { background: transparent; border-color: var(--border); box-shadow: none; }
+.status-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.status-badge { padding: 1px 8px; border-radius: 10px; background: color-mix(in srgb, var(--status-progress) 15%, transparent); color: var(--status-progress); font-size: 12px; font-weight: 600; }
+.status-line-done { color: var(--status-done); font-weight: 500; }
+.status-line-done svg { flex: none; }
+.task-card.just-moved { animation: card-moved 0.9s ease-out; }
+@keyframes card-moved {
+  0% { transform: scale(0.96); box-shadow: 0 0 0 3px var(--accent); }
+  30% { transform: scale(1); }
+  100% { box-shadow: 0 0 0 3px transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .task-card.just-moved { animation: none; }
+}
+.status-line:has(.status-back) { flex-wrap: nowrap; }
+.status-line:has(.status-back) small { flex: 1; min-width: 0; }
+.status-badge { flex: none; }
+.status-back { flex: none; margin-left: auto; }
+.task-card.status-done .btn { background: var(--surface); }
+.task-actions .next-step { gap: 4px; padding: 0 10px; }
+.task-actions .next-step ~ .attach-btn { margin-left: auto; }
+.board-progress { display: grid; gap: 6px; margin-bottom: 16px; }
+.board-progress-text { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; font-size: 14px; }
+.board-progress-track { display: flex; height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.board-progress-track span { height: 100%; transition: width 0.3s; }
+.toast { display: flex; align-items: center; gap: 12px; }
+.toast-action { padding: 2px 4px; border: 0; background: none; color: inherit; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; pointer-events: auto; }
+
 /* ---------- Comments and mentions ---------- */
 .comments { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--border); }
 .comment-list { display: grid; gap: 4px; margin-bottom: 12px; }

@@ -5,7 +5,7 @@ import Avatar from './Avatar';
 import CommentList from './CommentList';
 import Modal from './Modal';
 import { EditIcon, TrashIcon } from './Icons';
-import { STATUSES } from '../utils/taskStatus';
+import { STATUSES, statusNote } from '../utils/taskStatus';
 import { confirmDialog, toast } from '../utils/feedback';
 import { isOverdue } from '../utils/dates';
 
@@ -115,6 +115,7 @@ export default function TaskDetail({ projectId, task: t, user, isOwner, members,
     <Modal title={t.title} onClose={onClose} wide>
       <div className="detail-meta">
         <span className="status-pill"><span className="dot" style={{ background: status?.color }} aria-hidden="true" /> {status?.label}</span>
+        {statusNote(t) && <small className="muted">{statusNote(t)}</small>}
         <span className="task-people"><Avatar user={t.assignee} size={22} /> {t.assignee ? t.assignee.name : 'Unassigned'}</span>
         {t.deadline && (
           <span className={`due${overdue ? ' overdue' : ''}`}>
