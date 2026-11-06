@@ -136,6 +136,18 @@ ul { margin: 0; padding: 0; list-style: none; }
 .check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
 .check input { width: 16px; height: 16px; accent-color: var(--accent); }
 
+/* Choosing who a task is for */
+.assignee-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); align-content: start; gap: 8px; max-height: 292px; padding: 3px; margin: -3px; overflow-y: auto; }
+.assignee-option { position: relative; display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 56px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; color: var(--text); cursor: pointer; transition: background-color 0.15s, border-color 0.15s; }
+.assignee-option:hover { border-color: var(--accent); background: var(--hover); }
+.assignee-option.selected { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.assignee-option:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.assignee-option > svg { flex: none; margin-left: auto; color: var(--accent-text); }
+.assignee-text { display: grid; flex: 1; min-width: 0; line-height: 1.3; }
+.assignee-name { display: flex; align-items: center; min-width: 0; font-weight: 500; }
+.assignee-name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.assignee-name .you-tag { flex: none; }
+
 /* ---------- Feedback ---------- */
 .alert { padding: 10px 14px; border-radius: 8px; background: var(--danger-soft); color: var(--danger); }
 .notice { padding: 10px 14px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-text); }

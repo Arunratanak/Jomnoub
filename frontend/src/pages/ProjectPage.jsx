@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import AssigneePicker from '../components/AssigneePicker';
 import Avatar, { ProjectMark } from '../components/Avatar';
 import BoardProgress from '../components/BoardProgress';
 import ChatPanel from '../components/ChatPanel';
@@ -825,19 +826,17 @@ export default function ProjectPage() {
               <span>Description (optional)</span>
               <textarea className="textarea" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={1000} />
             </label>
-            <label className="field">
-              <span>Assignee</span>
-              <select className="select" value={form.assignee} onChange={(e) => setForm({ ...form, assignee: e.target.value })}>
-                <option value="">Unassigned</option>
-                {!editingId && project.members.length > 1 && (
-                  <option value={EVERYONE}>Everyone (a separate task for each member)</option>
-                )}
-                {membersSorted.map((m) => (
-                  <option key={m.user._id} value={m.user._id}>
-                    {m.user.name}{m.role === 'owner' && !isOwner ? ' (owner, as a suggestion)' : ''}
-                  </option>
-                ))}
-              </select>
+            <div className="field">
+              <span id="assignee-label">Assignee</span>
+              <AssigneePicker
+                members={membersSorted}
+                value={form.assignee}
+                onChange={(assignee) => setForm({ ...form, assignee })}
+                labelledBy="assignee-label"
+                currentUserId={user._id}
+                isOwner={isOwner}
+                everyoneValue={!editingId && project.members.length > 1 ? EVERYONE : null}
+              />
               {assigningToOwner && (
                 <small className="muted">You can't assign work to the owner directly. They'll get a suggestion to accept or decline.</small>
               )}
@@ -847,7 +846,7 @@ export default function ProjectPage() {
                   {!isOwner && " The owner's copy waits as a suggestion for them to accept."}
                 </small>
               )}
-            </label>
+            </div>
             <label className="field">
               <span>Deadline</span>
               <input className="input" type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} />

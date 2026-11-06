@@ -72,7 +72,7 @@ Sign A back in before continuing.
 
 | # | Step | Expected |
 |---|---|---|
-| 6.1 | A: open the assignee dropdown in "Private project" | Only A is listed (B isn't a member there) |
+| 6.1 | A: open the Assignee choices in "Private project" | Only A is listed (B isn't a member there) |
 | 6.2 | A: in "Test project", assign a task to B, then remove B (Members > Remove) | The task becomes Unassigned; Activity shows "removed B from the project" |
 | 6.3 | B: refresh My Tasks | That task is gone; the project page now shows "Project not found" |
 
@@ -133,12 +133,12 @@ Do this with B back in a project owned by A.
 | # | Step | Expected |
 |---|---|---|
 | 11.1 | A: open the Members tab | A is listed first with an Owner badge; B has a Member badge |
-| 11.2 | B: Add task, choose A as assignee | The option says "(owner, as a suggestion)" and the form explains the owner must confirm |
+| 11.2 | B: Add task, choose A as assignee | A's choice says "Owner · as a suggestion" and the form explains the owner must confirm |
 | 11.3 | B: click "Add and suggest" | The card says Unassigned and "Waiting for the owner to confirm" |
 | 11.4 | A: refresh the board | A banner says a task was suggested; the bell count goes up; the card has Accept and Decline |
 | 11.5 | A: click Accept | The task is assigned to A and appears in A's My Tasks |
 | 11.6 | B: suggest another task; A: Decline it from My Tasks | The task stays Unassigned and the suggestion is gone |
-| 11.7 | A or B: click a task's title you can edit, add a subtask with notes | The subtask and notes appear, with "0 of 1 done" |
+| 11.7 | A or B: click a task's title you can edit, add a subtask with a description | The subtask and its description appear, with "0 of 1 done" |
 | 11.8 | Tick its checkbox | "1 of 1 done"; the title is struck through; the card shows 1/1 |
 | 11.9 | B: open a task B didn't create and isn't assigned | Checkboxes are disabled and there's no add form |
 | 11.10 | B: open the Chat tab and send a message | It appears on the right |
@@ -227,6 +227,8 @@ Use the same two accounts, A (owner) and B (member).
 | 15.10 | A: with the list folded, add a task for B | The list opens, so the new task can be seen |
 | 15.11 | Hover over a task card, then click an empty part of it | The card lifts and its title turns green; pressing pushes it down; letting go opens the task |
 | 15.12 | Click Attach, Start, Edit or Delete on a card | Each does its own job and does not open the task |
+| 15.13 | Add task, look at Assignee | Each member appears with their picture and name, and you are marked "You"; clicking one selects it with a tick |
+| 15.14 | Open a task you can change and look under Subtasks | A description box is already showing; a subtask can be added with or without a description |
 
 ## 16. Editing and deleting tasks
 

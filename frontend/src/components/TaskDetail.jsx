@@ -26,7 +26,7 @@ function SubtaskItem({ subtask: s, canEdit, onToggle, onSave, onDelete }) {
       <li className="subtask">
         <form className="form" style={{ flex: 1, gap: 8 }} onSubmit={save}>
           <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} required autoFocus aria-label="Subtask title" />
-          <textarea className="textarea" value={note} onChange={(e) => setNote(e.target.value)} maxLength={1000} placeholder="Notes (optional)" aria-label="Subtask notes" />
+          <textarea className="textarea" value={note} onChange={(e) => setNote(e.target.value)} maxLength={1000} placeholder="Description (optional)" aria-label="Subtask description" />
           <div className="form-actions">
             <button type="button" className="btn btn-sm" onClick={() => { setEditing(false); setTitle(s.title); setNote(s.note || ''); }}>Cancel</button>
             <button type="submit" className="btn btn-sm btn-primary">Save</button>
@@ -64,7 +64,6 @@ function SubtaskItem({ subtask: s, canEdit, onToggle, onSave, onDelete }) {
 export default function TaskDetail({ projectId, task: t, person, user, isOwner, members, highlightCommentId, canEditSubtasks, onUpdated, onAttachmentCount, onCommentCount, onClose }) {
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
-  const [showNote, setShowNote] = useState(false);
   const [saving, setSaving] = useState(false);
   const base = `/projects/${projectId}/tasks/${t._id}/subtasks`;
   const subtasks = t.subtasks || [];
@@ -81,7 +80,6 @@ export default function TaskDetail({ projectId, task: t, person, user, isOwner, 
       onUpdated(res.data.task);
       setTitle('');
       setNote('');
-      setShowNote(false);
     } catch (err) {
       toast(errorMessage(err, 'Could not add the subtask.'), 'error');
     } finally {
@@ -155,11 +153,8 @@ export default function TaskDetail({ projectId, task: t, person, user, isOwner, 
       {canEditSubtasks && (
         <form className="subtask-add" onSubmit={add}>
           <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Add a subtask" aria-label="New subtask title" maxLength={200} required />
-          {showNote && (
-            <textarea className="textarea" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Notes (optional)" aria-label="New subtask notes" maxLength={1000} autoFocus />
-          )}
+          <textarea className="textarea" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Description (optional)" aria-label="New subtask description" maxLength={1000} />
           <div className="subtask-add-actions">
-            {!showNote && <button type="button" className="btn btn-sm" onClick={() => setShowNote(true)}>Add notes</button>}
             <button type="submit" className="btn btn-sm btn-primary" disabled={saving}>{saving ? 'Adding...' : 'Add subtask'}</button>
           </div>
         </form>

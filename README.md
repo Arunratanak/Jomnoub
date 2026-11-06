@@ -17,11 +17,11 @@ Built as a full-stack course final project.
 - Owners can remove members; members can leave. Tasks assigned to someone who leaves or is removed become unassigned. The last owner can't be removed.
 
 **Tasks**
-- Title, description, status (To do / In progress / Done), deadline and assignee. The assignee must be a project member.
+- Title, description, status (To do / In progress / Done), deadline and assignee. The assignee is chosen from the project's members, shown with their pictures and names.
 - The owner can edit, move and delete any task. A member can do the same to their own: a task assigned to them, or one they created that nobody else has been given. Once a member gives a task to a teammate, it's the teammate's.
 - **Assign to all:** a new task can go to everyone, which creates a separate copy for each member so each person tracks their own.
 - **Suggestions:** members can't assign work to the owner. Choosing the owner creates a suggestion: the card shows the owner's name with "waiting to accept", and nobody can move it until the owner accepts or declines. Accepting makes the owner the assignee; declining leaves it unassigned.
-- **Subtasks:** each task can have up to 50 subtasks with notes and a done checkbox. The owner and the person whose task it is can change them; other members can read them.
+- **Subtasks:** each task can have up to 50 subtasks with a description and a done checkbox. The owner and the person whose task it is can change them; other members can read them.
 - **Moving a task along:** each card shows its next step (Start, Mark complete, Reopen), and an In progress card can go back to To do. Stages look different at a glance, cards record who started and completed them and when, and every move can be undone from the confirmation message.
 - **Comments and @mentions:** any member can comment on a task. Typing `@` lists the project's members, and the mentioned person is notified. The task's assignee, creator and earlier commenters are told about new comments. Authors can delete their own comments and the owner can delete any. A task's address includes `?task=<id>`, so tasks can be linked to directly.
 - **Attachments:** members can add documents, spreadsheets, slides, images and zip files to a task (up to 10 MB each, 20 per task, 500 MB per project and 1 GB per person). Files are stored in a private Cloudflare R2 bucket, and every download goes through the API's membership checks. Without R2 settings, they go in the database instead, which suits local development.
