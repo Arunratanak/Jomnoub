@@ -26,6 +26,8 @@ export const AlertIcon = (p) => <Icon {...p}><path d="M12 3l10 18H2L12 3z" /><pa
 export const FolderIcon = (p) => <Icon {...p}><path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6z" /></Icon>;
 export const MoreIcon = (p) => <Icon {...p}><circle cx="12" cy="5" r="1.2" fill="currentColor" /><circle cx="12" cy="12" r="1.2" fill="currentColor" /><circle cx="12" cy="19" r="1.2" fill="currentColor" /></Icon>;
 export const ChevronDownIcon = (p) => <Icon {...p}><path d="M6 9l6 6 6-6" /></Icon>;
+export const ChevronLeftIcon = (p) => <Icon {...p}><path d="M15 6l-6 6 6 6" /></Icon>;
+export const ChevronRightIcon = (p) => <Icon {...p}><path d="M9 6l6 6-6 6" /></Icon>;
 export const PlayIcon =(p) => <Icon {...p}><path d="M7 4l13 8-13 8z" /></Icon>;
 export const UndoIcon = (p) => <Icon {...p}><path d="M9 7L4 12l5 5M4 12h11a5 5 0 0 1 0 10h-2" /></Icon>;
 export const CommentIcon =(p) => <Icon {...p}><path d="M21 12a8 8 0 0 1-8 8H5l-2 2V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8z" /></Icon>;

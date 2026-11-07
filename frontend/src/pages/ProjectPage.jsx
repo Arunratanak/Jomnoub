@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { AnimatePresence, motion as Motion } from 'motion/react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import AssigneePicker from '../components/AssigneePicker';
@@ -20,7 +21,7 @@ import { projectGradient } from '../utils/colors';
 import { isOverdue } from '../utils/dates';
 import { notifyProjectsChanged, notifyTasksChanged } from '../utils/events';
 import { confirmDialog, toast } from '../utils/feedback';
-import { STATUSES, statusLabel, taskPerson } from '../utils/taskStatus';
+import { splitTodo, STATUSES, statusLabel, taskPerson } from '../utils/taskStatus';
 import useTitle from '../utils/useTitle';
 
 // The chart library is large, so it only loads when the Progress tab is opened
@@ -28,6 +29,7 @@ const ProjectStats = lazy(() => import('../components/ProjectStats'));
 
 const UNREAD_CHECK_MS = 30000;
 const MOVED_HIGHLIGHT_MS = 900;
+const CARD_SPRING = { type: 'spring', stiffness: 380, damping: 34 };
 const EVERYONE = 'everyone'; // the assignee choice that makes a copy for each member
 const SHOW_TEAMMATES_KEY = 'jomnoub:show-teammates';
 
@@ -74,6 +76,8 @@ export default function ProjectPage() {
   const [tasksLoaded, setTasksLoaded] = useState(false);
   const [showTeammates, setShowTeammates] = useState(loadShowTeammates);
   const [movedId, setMovedId] = useState(null); // the card that just changed column
+  const [leavingId, setLeavingId] = useState(null); // the card fading out after being deleted
+  const [draggingId, setDraggingId] = useState(null);
   const movedTimer = useRef(null);
   const checkedTask = useRef(null);
   const draggedId = useRef(null);
@@ -92,6 +96,13 @@ export default function ProjectPage() {
     next.delete('comment');
     return next;
   }, { state: { openedHere: true } });
+  // Moving to another task replaces this one in history, so Back still closes the window
+  const goToTask = (task) => setParams((prev) => {
+    const next = new URLSearchParams(prev);
+    next.set('task', task._id);
+    next.delete('comment');
+    return next;
+  }, { replace: true, state: location.state });
   const closeTask = () => {
     // Opened from this page: step back, so closing doesn't leave an extra history entry
     if (location.state?.openedHere) {
@@ -262,7 +273,7 @@ export default function ProjectPage() {
     setTaskFormOpen(true);
   };
 
-  const changeStatus = async (t, status, { isUndo = false } = {}) => {
+  const changeStatus = async (t, status, { isUndo = false, inTaskWindow = false } = {}) => {
     if (t.status === status) return;
     const previous = t.status;
     setError('');
@@ -284,8 +295,9 @@ export default function ProjectPage() {
       await loadTasks();
     } catch (err) {
       const message = errorMessage(err, 'Could not update the status.');
-      // Undo can be pressed after leaving this page, where an inline error wouldn't show
-      if (isUndo) toast(message, 'error');
+      // Undo can be pressed after leaving this page, and the task window covers the page,
+      // so an inline error wouldn't be seen in either case
+      if (isUndo || inTaskWindow) toast(message, 'error');
       else setError(message);
       loadTasks().catch(() => {});
     }
@@ -297,11 +309,14 @@ export default function ProjectPage() {
     try {
       setError('');
       await api.delete(`/projects/${id}/tasks/${t._id}`);
+      setLeavingId(t._id);
       notifyTasksChanged();
       toast('Task deleted.');
       await loadTasks();
     } catch (err) {
       setError(errorMessage(err, 'Could not delete the task.'));
+    } finally {
+      setLeavingId(null);
     }
   };
 
@@ -345,11 +360,19 @@ export default function ProjectPage() {
     draggedId.current = t._id;
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', t._id); // required by Firefox
+    setTimeout(() => setDraggingId(t._id)); // after the browser has taken its picture of the card
+  };
+
+  const onDragEnd = () => {
+    setDraggingId(null);
+    setDropColumn(null);
+    draggedId.current = null;
   };
 
   const onDrop = (e, status) => {
     e.preventDefault();
     setDropColumn(null);
+    setDraggingId(null);
     const t = tasks.find((x) => x._id === draggedId.current);
     draggedId.current = null;
     if (t) changeStatus(t, status);
@@ -519,6 +542,23 @@ export default function ProjectPage() {
   ];
   const activeFilter = FILTERS.find((f) => f.value === filter) || FILTERS[0];
   const visibleTasks = tasks.filter(activeFilter.test);
+  const isMine = (t) => personOf(t)?._id === user._id;
+  const inColumn = (status) => visibleTasks
+    .filter((t) => t.status === status)
+    .sort((a, b) => isMine(b) - isMine(a)); // your own first
+
+  // Cards only re-measure when this changes, not on every keystroke elsewhere on the page
+  const boardLayoutKey = `${showTeammates}|${visibleTasks.map((t) => `${t._id}:${t.status}:${personOf(t)?._id}`).join()}`;
+
+  // The tasks the window's Previous and Next step through, in the order the column shows them
+  const detailSiblings = (() => {
+    if (!detailTask) return [];
+    const items = inColumn(detailTask.status);
+    if (detailTask.status !== 'todo' || filter !== 'all') return items;
+    const { mine, open, teammates } = splitTodo(items, personOf, user._id);
+    const includeTeammates = showTeammates || teammates.includes(detailTask);
+    return [...mine, ...open, ...(includeTeammates ? teammates : [])];
+  })();
 
   return (
     <>
@@ -554,12 +594,18 @@ export default function ProjectPage() {
           >
             {t.label}
             {t.dot && <span className="tab-dot"><span className="sr-only"> (new messages)</span></span>}
+            {tab === t.value && <Motion.span layoutId="tab-underline" className="tab-underline" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />}
           </button>
         ))}
       </div>
 
       {error && <p className="alert" style={{ marginBottom: 16 }}>{error}</p>}
 
+      {tab === 'chat' && <ChatPanel projectId={id} user={user} isOwner={isOwner} onSeen={clearUnread} />}
+
+      {/* Chat stays outside: it sizes itself to the screen, and has no need to fade in */}
+      {tab !== 'chat' && (
+      <Motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
       {(tab === 'board' || tab === 'timeline') && (
         <>
           {isOwner && pendingSuggestions.length > 0 && filter !== 'suggested' && (
@@ -608,32 +654,44 @@ export default function ProjectPage() {
       {tab === 'board' && (
         <>
           <BoardProgress tasks={tasks} />
-          <div className="board">
+          <div className={`board${draggingId ? ' is-dragging' : ''}`}>
             {STATUSES.map((col) => {
-              const isMine = (t) => personOf(t)?._id === user._id;
-              const items = visibleTasks
-                .filter((t) => t.status === col.value)
-                .sort((a, b) => isMine(b) - isMine(a)); // your own first
+              const items = inColumn(col.value);
+              // The wrapper animates and the card keeps the browser's own dragging, which
+              // Motion would take over if the two were the same element
               const renderCard = (t) => (
-                <TaskCard
+                <Motion.div
                   key={t._id}
-                  projectId={id}
-                  task={t}
-                  person={personOf(t)}
-                  isMine={isMine(t)}
-                  onFileAdded={onFileAdded}
-                  isOwner={isOwner}
-                  canManage={canManage(t)}
-                  canChangeStatus={canMove(t)}
-                  draggable={canMove(t)}
-                  justMoved={movedId === t._id}
-                  onOpen={openTask}
-                  onStatus={changeStatus}
-                  onEdit={startEdit}
-                  onDelete={removeTask}
-                  onSuggestion={respondToSuggestion}
-                  onDragStart={onDragStart}
-                />
+                  className="task-slot"
+                  layout="position"
+                  layoutId={`task-${t._id}`}
+                  layoutDependency={boardLayoutKey}
+                  initial={movedId === t._id ? false : { opacity: 0, y: 8 }}
+                  animate={leavingId === t._id ? { opacity: 0, scale: 0.95 } : { opacity: 1, y: 0, scale: 1 }}
+                  transition={CARD_SPRING}
+                  style={movedId === t._id ? { position: 'relative', zIndex: 5 } : undefined}
+                >
+                  <TaskCard
+                    projectId={id}
+                    task={t}
+                    person={personOf(t)}
+                    isMine={isMine(t)}
+                    onFileAdded={onFileAdded}
+                    isOwner={isOwner}
+                    canManage={canManage(t)}
+                    canChangeStatus={canMove(t)}
+                    draggable={canMove(t)}
+                    justMoved={movedId === t._id}
+                    beingDragged={draggingId === t._id}
+                    onOpen={openTask}
+                    onStatus={changeStatus}
+                    onEdit={startEdit}
+                    onDelete={removeTask}
+                    onSuggestion={respondToSuggestion}
+                    onDragStart={onDragStart}
+                    onDragEnd={onDragEnd}
+                  />
+                </Motion.div>
               );
               return (
                 <div
@@ -668,8 +726,6 @@ export default function ProjectPage() {
           </div>
         </>
       )}
-
-      {tab === 'chat' && <ChatPanel projectId={id} user={user} isOwner={isOwner} onSeen={clearUnread} />}
 
       {tab === 'progress' && (
         <Suspense fallback={<Loading />}>
@@ -781,13 +837,21 @@ export default function ProjectPage() {
           </div>
         </div>
       )}
+      </Motion.div>
+      )}
 
+      <AnimatePresence>
       {detailTask && (
         <TaskDetail
+          key="task-window"
           projectId={id}
           task={detailTask}
           user={user}
           isOwner={isOwner}
+          siblings={detailSiblings}
+          canChangeStatus={canMove(detailTask)}
+          onStatus={(t, status) => changeStatus(t, status, { inTaskWindow: true })}
+          onNavigate={goToTask}
           canEditSubtasks={canManage(detailTask)}
           onUpdated={onTaskUpdated}
           onAttachmentCount={(change) => changeFileCount(detailTask._id, change)}
@@ -801,6 +865,7 @@ export default function ProjectPage() {
 
       {editingProject && (
         <EditProjectModal
+          key="edit-project"
           projectId={id}
           name={project.name}
           description={project.description}
@@ -816,7 +881,7 @@ export default function ProjectPage() {
       )}
 
       {taskFormOpen && (
-        <Modal title={editingId ? 'Edit task' : 'New task'} onClose={closeTaskForm}>
+        <Modal key="task-form" title={editingId ? 'Edit task' : 'New task'} onClose={closeTaskForm}>
           <form className="form" onSubmit={submit}>
             <label className="field">
               <span>Title</span>
@@ -859,6 +924,7 @@ export default function ProjectPage() {
           </form>
         </Modal>
       )}
+      </AnimatePresence>
     </>
   );
 }

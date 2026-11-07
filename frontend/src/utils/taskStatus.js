@@ -18,6 +18,17 @@ export const NEXT_STEP = {
 // Who a task is for: a suggestion waiting for the owner is already the owner's to take
 export const taskPerson = (t, owner) => t.assignee || (t.suggestedBy ? owner : null);
 
+// How the To do column groups tasks for the person looking at it
+export function splitTodo(tasks, personOf, currentUserId) {
+  return {
+    mine: tasks.filter((t) => personOf(t)?._id === currentUserId),
+    open: tasks.filter((t) => !personOf(t)),
+    teammates: tasks
+      .filter((t) => personOf(t) && personOf(t)._id !== currentUserId)
+      .sort((a, b) => personOf(a).name.localeCompare(personOf(b).name)),
+  };
+}
+
 // A click anywhere on a task's card opens it, unless it landed on one of the card's own
 // controls or the person was selecting text to copy
 export const opensCard = (e) =>

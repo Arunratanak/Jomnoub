@@ -274,7 +274,20 @@ Use the same two accounts, A (owner) and B (member).
 | 18.11 | A: assign one of those tasks to B, and delete another | Both work like any other task |
 | 18.12 | A: New project, leave Empty project selected | The project starts with no tasks |
 
-## 19. Cleanup
+## 19. Moving through tasks
+
+| # | Step | Expected |
+|---|---|---|
+| 19.1 | Click Start on a card | The card glides to In progress and the others close the gap; Undo glides it back |
+| 19.2 | Open a task and click Done in the row of stages at the top | The highlight slides to Done, the window stays open, and Undo appears |
+| 19.3 | Open a teammate's task as B (member) | The stages are shown but can't be clicked, with a note saying why |
+| 19.4 | Open a task in a column with several tasks; click Next, or press the right arrow | The next task appears, and it says e.g. "2 of 4 in To do" |
+| 19.5 | While typing a comment, press the left and right arrows | The cursor moves in the text and the task doesn't change |
+| 19.6 | Move to another task, then press the browser's Back button | The window closes rather than stepping back through tasks |
+| 19.7 | Drag a card over another column | Columns are outlined, the one under the card is highlighted, and the card lands there smoothly |
+| 19.8 | Turn on your device's "reduce motion" setting and repeat 19.1 | Cards move without gliding |
+
+## 20. Cleanup
 
 - A: delete "Test project" and "Private project" (Settings tab > Delete project on each).
 - If you used demo data: `npm run seed:clear` in `backend`.

@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { motion as Motion, useIsPresent } from 'motion/react';
 import api from '../api/client';
 import AttachmentPanel from './AttachmentPanel';
 import Avatar from './Avatar';
 import CommentList from './CommentList';
 import Modal from './Modal';
-import { EditIcon, TrashIcon } from './Icons';
+import StatusStepper from './StatusStepper';
+import { ChevronLeftIcon, ChevronRightIcon, CloseIcon, EditIcon, TrashIcon } from './Icons';
 import { STATUSES, statusNote } from '../utils/taskStatus';
 import { confirmDialog, toast } from '../utils/feedback';
 import { isOverdue } from '../utils/dates';
@@ -60,8 +62,8 @@ function SubtaskItem({ subtask: s, canEdit, onToggle, onSave, onDelete }) {
   );
 }
 
-// Full view of one task, including its subtasks
-export default function TaskDetail({ projectId, task: t, person, user, isOwner, members, highlightCommentId, canEditSubtasks, onUpdated, onAttachmentCount, onCommentCount, onClose }) {
+// What can change between tasks: kept separate so moving to another task starts it fresh
+function TaskBody({ projectId, task: t, person, user, isOwner, members, highlightCommentId, canEditSubtasks, onUpdated, onAttachmentCount, onCommentCount }) {
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
@@ -70,7 +72,6 @@ export default function TaskDetail({ projectId, task: t, person, user, isOwner, 
   const doneCount = subtasks.filter((s) => s.done).length;
   const percent = subtasks.length ? Math.round((doneCount / subtasks.length) * 100) : 0;
   const overdue = isOverdue(t);
-  const status = STATUSES.find((s) => s.value === t.status);
 
   const add = async (e) => {
     e.preventDefault();
@@ -110,9 +111,8 @@ export default function TaskDetail({ projectId, task: t, person, user, isOwner, 
   };
 
   return (
-    <Modal title={t.title} onClose={onClose} wide>
+    <>
       <div className="detail-meta">
-        <span className="status-pill"><span className="dot" style={{ background: status?.color }} aria-hidden="true" /> {status?.label}</span>
         {statusNote(t) && <small className="muted">{statusNote(t)}</small>}
         <span className="task-people"><Avatar user={person} size={22} /> {person ? person.name : 'Unassigned'}{t.suggestedBy && <small className="muted"> · waiting to accept</small>}</span>
         {t.deadline && (
@@ -174,6 +174,74 @@ export default function TaskDetail({ projectId, task: t, person, user, isOwner, 
         highlightId={highlightCommentId}
         onCountChange={onCommentCount}
       />
+    </>
+  );
+}
+
+// Full view of one task: where it stands, how to move it, and the way to the next one
+export default function TaskDetail({ task: t, siblings, canChangeStatus, onStatus, onNavigate, onClose, ...body }) {
+  const isPresent = useIsPresent();
+  const shell = useRef(null);
+  const [direction, setDirection] = useState(0);
+  const index = siblings.findIndex((s) => s._id === t._id);
+  const previous = index > 0 ? siblings[index - 1] : null;
+  const next = index >= 0 && index < siblings.length - 1 ? siblings[index + 1] : null;
+  const columnLabel = STATUSES.find((s) => s.value === t.status)?.label;
+
+  const go = (task, towards) => {
+    setDirection(towards);
+    onNavigate(task);
+    shell.current?.closest('.modal-backdrop')?.scrollTo({ top: 0 });
+  };
+
+  // Left and right move between tasks, unless the person is typing or a dialog is on top
+  useEffect(() => {
+    if (!isPresent) return undefined;
+    const onKey = (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if (e.target.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+      if (document.querySelector('.confirm')) return;
+      const target = e.key === 'ArrowLeft' ? previous : next;
+      if (!target) return;
+      e.preventDefault();
+      setDirection(e.key === 'ArrowLeft' ? -1 : 1);
+      onNavigate(target);
+      shell.current?.closest('.modal-backdrop')?.scrollTo({ top: 0 });
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isPresent, previous, next, onNavigate]);
+
+  return (
+    <Modal title={t.title} onClose={onClose} wide>
+      <div ref={shell} className="detail-nav">
+        {siblings.length > 1 && index >= 0 ? (
+          <div className="detail-nav-steps">
+            <button type="button" className="icon-btn icon-btn-sm" onClick={() => go(previous, -1)} disabled={!previous} aria-label="Previous task" title="Previous task (left arrow)">
+              <ChevronLeftIcon size={18} />
+            </button>
+            <button type="button" className="icon-btn icon-btn-sm" onClick={() => go(next, 1)} disabled={!next} aria-label="Next task" title="Next task (right arrow)">
+              <ChevronRightIcon size={18} />
+            </button>
+            <small className="muted">{index + 1} of {siblings.length} in {columnLabel}</small>
+          </div>
+        ) : <span />}
+        <button type="button" className="icon-btn icon-btn-sm" onClick={onClose} aria-label="Close task" title="Close (Esc)">
+          <CloseIcon size={18} />
+        </button>
+      </div>
+
+      <StatusStepper status={t.status} canChange={canChangeStatus} onChange={(status) => onStatus(t, status)} />
+      {!canChangeStatus && (
+        <p className="muted stepper-hint">
+          <small>{t.suggestedBy ? 'The owner has to accept this task before it can be moved.' : 'Only the owner or the person whose task this is can move it.'}</small>
+        </p>
+      )}
+
+      <Motion.div key={t._id} initial={{ opacity: 0, x: direction * 24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
+        <TaskBody task={t} {...body} />
+      </Motion.div>
 
       <div className="form-actions" style={{ marginTop: 16 }}>
         <button type="button" className="btn" onClick={onClose}>Close</button>

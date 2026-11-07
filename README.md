@@ -24,7 +24,8 @@ Built as a full-stack course final project.
 - **Assign to all:** a new task can go to everyone, which creates a separate copy for each member so each person tracks their own.
 - **Suggestions:** members can't assign work to the owner. Choosing the owner creates a suggestion: the card shows the owner's name with "waiting to accept", and nobody can move it until the owner accepts or declines. Accepting makes the owner the assignee; declining leaves it unassigned.
 - **Subtasks:** each task can have up to 50 subtasks with a description and a done checkbox. The owner and the person whose task it is can change them; other members can read them.
-- **Moving a task along:** each card shows its next step (Start, Mark complete, Reopen), and an In progress card can go back to To do. Stages look different at a glance, cards record who started and completed them and when, and every move can be undone from the confirmation message.
+- **Moving between tasks:** the task window has Previous and Next buttons (or the left and right arrow keys) to step through a column without closing it.
+- **Moving a task along:** each card shows its next step (Start, Mark complete, Reopen), and an In progress card can go back to To do. The task window shows all three stages, so a task can be moved in one click, and cards glide to their new column. Stages look different at a glance, cards record who started and completed them and when, and every move can be undone from the confirmation message.
 - **Comments and @mentions:** any member can comment on a task. Typing `@` lists the project's members, and the mentioned person is notified. The task's assignee, creator and earlier commenters are told about new comments. Authors can delete their own comments and the owner can delete any. A task's address includes `?task=<id>`, so tasks can be linked to directly.
 - **Attachments:** members can add documents, spreadsheets, slides, images and zip files to a task (up to 10 MB each, 20 per task, 500 MB per project and 1 GB per person). Files are stored in a private Cloudflare R2 bucket, and every download goes through the API's membership checks. Without R2 settings, they go in the database instead, which suits local development.
 - The To do column puts your own tasks first, then unassigned ones, with teammates' tasks folded behind a button that remembers your choice. Your tasks also come first in the other columns.
@@ -57,7 +58,7 @@ Built as a full-stack course final project.
 
 | Part | Technology |
 |---|---|
-| Frontend | React 19, Vite, react-router-dom, axios, Recharts, @react-oauth/google. Plain React with inline styles, no UI library. |
+| Frontend | React 19, Vite, react-router-dom, axios, Recharts, @react-oauth/google, Motion (animations, which follow the device's reduced-motion setting). Plain React with inline styles, no UI library. |
 | Backend | Node.js 22, Express 5 (ES modules), Mongoose, zod, helmet, cors, cookie-parser, jsonwebtoken, google-auth-library, express-rate-limit, morgan, resend |
 | Database | MongoDB Atlas |
 | Hosting | Render: a static site for the frontend and a web service for the backend (both free tier) |

@@ -10,8 +10,8 @@ const STEP_ICONS = { todo: PlayIcon, 'in-progress': CheckIcon, done: UndoIcon };
 
 // One card on the project board
 export default function TaskCard({
-  projectId, task: t, person, isMine, isOwner, canManage, canChangeStatus, draggable, justMoved,
-  onOpen, onStatus, onEdit, onDelete, onSuggestion, onDragStart, onFileAdded,
+  projectId, task: t, person, isMine, isOwner, canManage, canChangeStatus, draggable, justMoved, beingDragged,
+  onOpen, onStatus, onEdit, onDelete, onSuggestion, onDragStart, onDragEnd, onFileAdded,
 }) {
   const overdue = isOverdue(t);
   const next = NEXT_STEP[t.status];
@@ -29,10 +29,11 @@ export default function TaskCard({
 
   return (
     <div
-      className={`task-card status-${t.status}${overdue ? ' overdue' : ''}${draggable ? ' draggable' : ''}${fileOver ? ' file-over' : ''}${justMoved ? ' just-moved' : ''}${isMine ? ' mine' : ''}`}
+      className={`task-card status-${t.status}${overdue ? ' overdue' : ''}${draggable ? ' draggable' : ''}${fileOver ? ' file-over' : ''}${justMoved ? ' just-moved' : ''}${isMine ? ' mine' : ''}${beingDragged ? ' being-dragged' : ''}`}
       draggable={draggable && !uploading}
       onClick={(e) => { if (opensCard(e)) onOpen(t); }}
       onDragStart={draggable ? (e) => onDragStart(e, t) : undefined}
+      onDragEnd={draggable ? onDragEnd : undefined}
       onDragOver={(e) => {
         if (!isFileDrag(e)) return;
         e.preventDefault();

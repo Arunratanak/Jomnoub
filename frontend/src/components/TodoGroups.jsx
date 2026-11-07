@@ -1,18 +1,14 @@
 import Avatar from './Avatar';
 import { ChevronDownIcon } from './Icons';
 import { isOverdue } from '../utils/dates';
+import { splitTodo } from '../utils/taskStatus';
 
 const MAX_FACES = 4;
 
 // The To do column, for the person looking at it: their own work first, then anything
 // nobody has taken yet, with teammates' tasks folded away behind a button.
 export default function TodoGroups({ tasks, personOf, currentUserId, showTeammates, onToggle, renderCard }) {
-  const mine = tasks.filter((t) => personOf(t)?._id === currentUserId);
-  const open = tasks.filter((t) => !personOf(t));
-  const teammates = tasks
-    .filter((t) => personOf(t) && personOf(t)._id !== currentUserId)
-    .sort((a, b) => personOf(a).name.localeCompare(personOf(b).name));
-
+  const { mine, open, teammates } = splitTodo(tasks, personOf, currentUserId);
   const people = [...new Map(teammates.map((t) => [personOf(t)._id, personOf(t)])).values()];
   const overdue = teammates.filter(isOverdue).length;
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion as Motion } from 'motion/react';
 import { CONFIRM_EVENT, TOAST_EVENT } from '../utils/feedback';
 
 const TOAST_MS = 4000;
@@ -43,6 +44,7 @@ export default function FeedbackHost() {
   }, [dialog]);
 
   const answer = (value) => {
+    if (!dialog) return; // a click while it animates out
     dialog.resolve(value);
     setDialog(null);
   };
@@ -50,44 +52,73 @@ export default function FeedbackHost() {
   return (
     <>
       <div className="toasts" role="status" aria-live="polite">
-        {toasts.map((t) => (
-          <div key={t.id} className={`toast${t.type === 'error' ? ' toast-error' : ''}`}>
-            {t.message}
-            {t.action && (
-              <button
-                type="button"
-                className="toast-action"
-                onClick={() => {
-                  setToasts((list) => list.filter((x) => x.id !== t.id));
-                  t.action.onClick();
-                }}
-              >
-                {t.action.label}
-              </button>
-            )}
-          </div>
-        ))}
+        <AnimatePresence initial={false}>
+          {toasts.map((t) => (
+            <Motion.div
+              key={t.id}
+              layout="position"
+              className={`toast${t.type === 'error' ? ' toast-error' : ''}`}
+              initial={{ opacity: 0, y: 12, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.12 } }}
+              transition={{ type: 'spring', stiffness: 500, damping: 34 }}
+            >
+              {t.message}
+              {t.action && (
+                <button
+                  type="button"
+                  className="toast-action"
+                  onClick={() => {
+                    setToasts((list) => list.filter((x) => x.id !== t.id));
+                    t.action.onClick();
+                  }}
+                >
+                  {t.action.label}
+                </button>
+              )}
+            </Motion.div>
+          ))}
+        </AnimatePresence>
       </div>
 
-      {dialog && (
-        <div className="modal-backdrop confirm-backdrop" onMouseDown={(e) => e.target === e.currentTarget && answer(false)}>
-          <div className="confirm" role="alertdialog" aria-modal="true" aria-label={dialog.title}>
-            <h2>{dialog.title}</h2>
-            {dialog.message && <p className="muted">{dialog.message}</p>}
-            <div className="form-actions">
-              <button type="button" className="btn" onClick={() => answer(false)}>Cancel</button>
-              <button
-                ref={confirmRef}
-                type="button"
-                className={`btn ${dialog.danger ? 'btn-danger-solid' : 'btn-primary'}`}
-                onClick={() => answer(true)}
-              >
-                {dialog.confirmLabel || 'Confirm'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {dialog && (
+          <Motion.div
+            key="confirm"
+            className="modal-backdrop confirm-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, pointerEvents: 'none', transition: { duration: 0.12 } }}
+            transition={{ duration: 0.14 }}
+            onMouseDown={(e) => e.target === e.currentTarget && answer(false)}
+          >
+            <Motion.div
+              className="confirm"
+              role="alertdialog"
+              aria-modal="true"
+              aria-label={dialog.title}
+              initial={{ scale: 0.95, y: 8 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.98, transition: { duration: 0.12 } }}
+              transition={{ type: 'spring', stiffness: 480, damping: 32 }}
+            >
+              <h2>{dialog.title}</h2>
+              {dialog.message && <p className="muted">{dialog.message}</p>}
+              <div className="form-actions">
+                <button type="button" className="btn" onClick={() => answer(false)}>Cancel</button>
+                <button
+                  ref={confirmRef}
+                  type="button"
+                  className={`btn ${dialog.danger ? 'btn-danger-solid' : 'btn-primary'}`}
+                  onClick={() => answer(true)}
+                >
+                  {dialog.confirmLabel || 'Confirm'}
+                </button>
+              </div>
+            </Motion.div>
+          </Motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

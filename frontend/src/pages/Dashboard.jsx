@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { AnimatePresence, motion as Motion } from 'motion/react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { ProjectMark } from '../components/Avatar';
@@ -51,7 +52,13 @@ function CardMenu({ project: p, onEdit, onDelete }) {
 function ProjectCard({ project: p, onEdit, onDelete }) {
   const to = `/projects/${p.id}`;
   return (
-    <div className="project-card">
+    <Motion.div
+      className="project-card"
+      layout="position"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.22, ease: 'easeOut' }}
+    >
       <Link to={to} className="project-thumb" style={{ background: projectGradient(p.id) }}>
         <span className="project-thumb-title">{p.name}</span>
         <span className="thumb-badge">{p.memberCount} member{p.memberCount === 1 ? '' : 's'}</span>
@@ -71,7 +78,7 @@ function ProjectCard({ project: p, onEdit, onDelete }) {
         </Link>
         {p.role === 'owner' && <CardMenu project={p} onEdit={onEdit} onDelete={onDelete} />}
       </div>
-    </div>
+    </Motion.div>
   );
 }
 
@@ -226,19 +233,20 @@ export default function Dashboard() {
         </div>
       )}
 
-      {editing && (
-        <EditProjectModal
-          projectId={editing.id}
-          name={editing.name}
-          description={editing.description}
-          onClose={closeEdit}
-          onSaved={onProjectSaved}
-        />
-      )}
-
-      {joining && <JoinProjectModal onClose={closeJoin} />}
-
-      {creating && <NewProjectModal onClose={closeCreate} onCreated={onProjectCreated} />}
+      <AnimatePresence>
+        {editing && (
+          <EditProjectModal
+            key="edit"
+            projectId={editing.id}
+            name={editing.name}
+            description={editing.description}
+            onClose={closeEdit}
+            onSaved={onProjectSaved}
+          />
+        )}
+        {joining && <JoinProjectModal key="join" onClose={closeJoin} />}
+        {creating && <NewProjectModal key="create" onClose={closeCreate} onCreated={onProjectCreated} />}
+      </AnimatePresence>
     </>
   );
 }
