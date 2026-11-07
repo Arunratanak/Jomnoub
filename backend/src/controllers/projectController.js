@@ -9,6 +9,11 @@ export async function create(req, res) {
   res.status(201).json({ project });
 }
 
+// GET /api/projects/templates
+export function templates(req, res) {
+  res.json({ templates: projectService.listTemplates() });
+}
+
 // GET /api/projects
 export async function list(req, res) {
   res.json({ projects: await projectService.listProjectsForUser(req.user._id) });

@@ -1,13 +1,14 @@
 import Project from '../models/Project.js';
 import Task from '../models/Task.js';
 import Invite from '../models/Invite.js';
-import { deleteProjectActivity } from './activityService.js';
+import { findTemplate, PROJECT_TEMPLATES } from '../data/projectTemplates.js';
+import { deleteProjectActivity, logActivity, quote } from './activityService.js';
 import { deleteProjectMessages } from './messageService.js';
 import { deleteProjectAttachments } from './attachmentService.js';
 import { deleteProjectComments } from './commentService.js';
 import { deleteProjectNotifications } from './notificationService.js';
 import { toProjectSummary } from '../dto/projectDto.js';
-import { NotFoundError } from '../exceptions/HttpError.js';
+import { BadRequestError, NotFoundError } from '../exceptions/HttpError.js';
 import { isObjectId } from '../validations/common.js';
 
 export const MEMBER_FIELDS = 'name email picture';
@@ -22,9 +23,44 @@ export async function findProjectForMember(projectId, userId) {
   return { project, role };
 }
 
+// What the New project form shows: enough to choose one, without the task descriptions
+export const listTemplates = () => PROJECT_TEMPLATES.map((t) => ({
+  id: t.id,
+  name: t.name,
+  description: t.description,
+  tasks: t.tasks.map((task) => task.title),
+}));
+
+// The board shows newest first, so the template's first task gets the newest time
+function addTemplateTasks(project, user, template) {
+  const now = Date.now();
+  return Task.insertMany(template.tasks.map((task, index) => ({
+    ...task,
+    subtasks: task.subtasks.map((title) => ({ title })),
+    project: project._id,
+    createdBy: user._id,
+    createdAt: new Date(now - index),
+  })));
+}
+
 // The creator becomes the owner
-export function createProject(user, { name, description }) {
-  return Project.create({ name, description, members: [{ user: user._id, role: 'owner' }] });
+export async function createProject(user, { name, description, template: templateId }) {
+  const template = templateId ? findTemplate(templateId) : null;
+  if (templateId && !template) throw new BadRequestError('That template doesn\'t exist.');
+
+  const project = await Project.create({ name, description, members: [{ user: user._id, role: 'owner' }] });
+  if (template) {
+    try {
+      await addTemplateTasks(project, user, template);
+    } catch (err) {
+      // Don't leave a half-filled project behind: they can simply try again
+      await Task.deleteMany({ project: project._id });
+      await project.deleteOne();
+      throw err;
+    }
+    await logActivity(project._id, user._id, `started this project from the ${quote(template.name)} template`);
+  }
+  return project;
 }
 
 export async function listProjectsForUser(userId) {

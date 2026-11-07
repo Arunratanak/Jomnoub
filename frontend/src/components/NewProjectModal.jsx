@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import Modal from './Modal';
+import TemplatePicker from './TemplatePicker';
 import { CheckIcon } from './Icons';
 
 const COPIED_MS = 2000;
@@ -57,7 +58,10 @@ function ProjectCreated({ project, onClose }) {
 
   return (
     <div className="form">
-      <p className="notice"><strong>{project.name}</strong> is ready.{!inviteFailed && ' Invite your team with this link.'}</p>
+      <p className="notice">
+        <strong>{project.name}</strong> is ready{project.taskCount > 0 && ` with ${project.taskCount} tasks`}.
+        {!inviteFailed && ' Invite your team with this link.'}
+      </p>
 
       {inviteFailed && (
         <div className="alert notice-row">
@@ -104,15 +108,26 @@ export default function NewProjectModal({ onClose, onCreated }) {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [created, setCreated] = useState(null);
+  const [templates, setTemplates] = useState([]);
+  const [templatesFailed, setTemplatesFailed] = useState(false);
+  const [template, setTemplate] = useState('');
+
+  useEffect(() => {
+    api
+      .get('/projects/templates')
+      .then((res) => setTemplates(res.data.templates))
+      .catch(() => setTemplatesFailed(true));
+  }, []);
 
   const create = async (e) => {
     e.preventDefault();
     setError('');
     setSaving(true);
     try {
-      const res = await api.post('/projects', { name, description });
+      const res = await api.post('/projects', { name, description, ...(template ? { template } : {}) });
       const project = res.data.project;
-      setCreated({ id: project.id || project._id, name: project.name });
+      const taskCount = templates.find((t) => t.id === template)?.tasks.length || 0;
+      setCreated({ id: project.id || project._id, name: project.name, taskCount });
       onCreated();
     } catch (err) {
       setError(createError(err));
@@ -140,6 +155,11 @@ export default function NewProjectModal({ onClose, onCreated }) {
           <span>Description (optional)</span>
           <textarea className="textarea" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={500} />
         </label>
+        <div className="field">
+          <span id="template-label">Start with</span>
+          <TemplatePicker templates={templates} value={template} onChange={setTemplate} labelledBy="template-label" />
+          {templatesFailed && <small className="muted">Templates couldn't load, but you can still create an empty project.</small>}
+        </div>
         {error && <p className="alert">{error}</p>}
         <div className="form-actions">
           <button type="button" className="btn" onClick={onClose}>Cancel</button>

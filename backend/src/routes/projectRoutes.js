@@ -17,6 +17,7 @@ router.use('/:projectId/messages', requireMember, messageRoutes);
 
 router.post('/', createProjectLimiter, projects.create);
 router.get('/', projects.list);
+router.get('/templates', projects.templates); // before /:projectId, which would match it
 
 router.get('/:projectId', requireMember, projects.getOne);
 router.patch('/:projectId', requireMember, requireOwner, projects.update);

@@ -269,6 +269,10 @@ Use the same two accounts, A (owner) and B (member).
 | 18.6 | A: click Copy link and paste it somewhere | The button says Copied, and the pasted link is the same one |
 | 18.7 | B: join with that link | B joins the new project |
 | 18.8 | A: in that box, click Open project (or Done) | Open project goes to the project; Done returns to Home, where it's listed |
+| 18.9 | A: New project, choose the Group report template | Its tasks are listed in the form before you create it |
+| 18.10 | A: create it and open the project | The tasks are in To do in the same order, unassigned, with their subtasks; Activity says it started from the template |
+| 18.11 | A: assign one of those tasks to B, and delete another | Both work like any other task |
+| 18.12 | A: New project, leave Empty project selected | The project starts with no tasks |
 
 ## 19. Cleanup
 

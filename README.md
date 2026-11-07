@@ -14,6 +14,7 @@ Built as a full-stack course final project.
 
 **Projects and teams**
 - Create, rename and delete projects. The creator is the owner, and creating a project shows its invite link straight away, ready to copy.
+- **Project templates:** a new project can start empty or from a template (Group report, Presentation, Software project, Event planning), which adds its tasks and subtasks, unassigned and with no deadlines. Templates are defined in `backend/src/data/projectTemplates.js`.
 - Invite teammates with a link (random token, expires after 7 days, one active link per project, can be regenerated or disabled), or add someone by email if they have signed in with Google before. Anyone with a link can open it directly or paste it into **Join project** on the home page.
 - Owners can remove members; members can leave. Tasks assigned to someone who leaves or is removed become unassigned. The last owner can't be removed.
 
@@ -142,7 +143,8 @@ All routes are under `/api`. Everything requires login except `GET /status`, `PO
 | `POST /auth/verify-email`, `POST /auth/resend-verification` | confirm an address with an emailed link / send a new link (logged in) |
 | `POST /auth/forgot-password`, `POST /auth/reset-password` | email a reset link / set a new password with it |
 | `GET /auth/me`, `POST /auth/logout` | current user / log out |
-| `GET /projects`, `POST /projects` | your projects / create one |
+| `GET /projects`, `POST /projects` | your projects / create one, optionally from a `template` |
+| `GET /projects/templates` | the templates to choose from |
 | `GET /projects/:projectId` | members |
 | `PATCH`, `DELETE /projects/:projectId` | owner |
 | `GET /projects/:projectId/stats`, `/activity` | members |
