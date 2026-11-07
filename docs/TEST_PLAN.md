@@ -257,7 +257,7 @@ Use the same two accounts, A (owner) and B (member).
 | 17.9 | A: choose a `.txt` or `.pdf` file as a photo | It's refused with a clear message, and the photo doesn't change |
 | 17.10 | A: copy your uploaded photo's address, then open it as an account that shares no project with you | "Not found" |
 
-## 18. Joining from the home page
+## 18. Creating and joining from the home page
 
 | # | Step | Expected |
 |---|---|---|
@@ -265,6 +265,10 @@ Use the same two accounts, A (owner) and B (member).
 | 18.2 | B: try again with the same link | The invite page says you're already a member, with an Open project button |
 | 18.3 | B: enter `hello` | "That doesn't look like an invite link", and the box stays open |
 | 18.4 | A: generate a new link; B: paste the old one | The box says the link is invalid or has expired |
+| 18.5 | A: on Home, click New project, enter a name and click Create project | The box stays open and shows the project's invite link |
+| 18.6 | A: click Copy link and paste it somewhere | The button says Copied, and the pasted link is the same one |
+| 18.7 | B: join with that link | B joins the new project |
+| 18.8 | A: in that box, click Open project (or Done) | Open project goes to the project; Done returns to Home, where it's listed |
 
 ## 19. Cleanup
 

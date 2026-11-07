@@ -136,6 +136,11 @@ ul { margin: 0; padding: 0; list-style: none; }
 .check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
 .check input { width: 16px; height: 16px; accent-color: var(--accent); }
 
+/* Invite link shown after creating a project */
+.invite-link-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.invite-link-row .input { flex: 1 1 200px; width: auto; min-width: 0; }
+.invite-link-row .btn { flex: none; }
+
 /* Profile page */
 .profile-card { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .profile-card .avatar { flex: none; object-fit: cover; }

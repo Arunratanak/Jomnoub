@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { ProjectMark } from '../components/Avatar';
 import EditProjectModal from '../components/EditProjectModal';
 import JoinProjectModal from '../components/JoinProjectModal';
-import Modal from '../components/Modal';
+import NewProjectModal from '../components/NewProjectModal';
 import { EditIcon, FolderIcon, LinkIcon, MoreIcon, PlusIcon, SearchIcon, TrashIcon } from '../components/Icons';
 import { projectGradient } from '../utils/colors';
 import { timeAgo } from '../utils/dates';
@@ -101,9 +101,6 @@ export default function Dashboard() {
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(false);
   const [editing, setEditing] = useState(null); // the project being edited
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [error, setError] = useState('');
 
   const load = () =>
     api
@@ -119,28 +116,11 @@ export default function Dashboard() {
     load();
   }, []);
 
-  const closeModal = useCallback(() => {
-    setCreating(false);
-    setError('');
-  }, []);
+  const closeCreate = useCallback(() => setCreating(false), []);
 
-  const create = async (e) => {
-    e.preventDefault();
-    setError('');
-    try {
-      await api.post('/projects', { name, description });
-      setName('');
-      setDescription('');
-      setCreating(false);
-      notifyProjectsChanged();
-      toast('Project created.');
-      await load();
-    } catch (err) {
-      const status = err.response?.status;
-      setError(status === 429 ? err.response.data.error
-        : status === 400 ? 'Could not create the project. Check the name and try again.'
-        : 'Could not create the project. Please try again.');
-    }
+  const onProjectCreated = () => {
+    notifyProjectsChanged();
+    load();
   };
 
   const closeEdit = useCallback(() => setEditing(null), []);
@@ -258,25 +238,7 @@ export default function Dashboard() {
 
       {joining && <JoinProjectModal onClose={closeJoin} />}
 
-      {creating && (
-        <Modal title="New project" onClose={closeModal}>
-          <form className="form" onSubmit={create}>
-            <label className="field">
-              <span>Project name</span>
-              <input className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} required autoFocus />
-            </label>
-            <label className="field">
-              <span>Description (optional)</span>
-              <textarea className="textarea" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={500} />
-            </label>
-            {error && <p className="alert">{error}</p>}
-            <div className="form-actions">
-              <button type="button" className="btn" onClick={closeModal}>Cancel</button>
-              <button type="submit" className="btn btn-primary">Create project</button>
-            </div>
-          </form>
-        </Modal>
-      )}
+      {creating && <NewProjectModal onClose={closeCreate} onCreated={onProjectCreated} />}
     </>
   );
 }

@@ -13,7 +13,7 @@ Built as a full-stack course final project.
 - **Profile page:** change your name, upload or remove a photo (or go back to your Google photo), see your account details, and see your task counts for each project. Signing in with Google never replaces a name or photo you chose. Uploaded photos can only be seen by you and people who share a project with you.
 
 **Projects and teams**
-- Create, rename and delete projects. The creator is the owner.
+- Create, rename and delete projects. The creator is the owner, and creating a project shows its invite link straight away, ready to copy.
 - Invite teammates with a link (random token, expires after 7 days, one active link per project, can be regenerated or disabled), or add someone by email if they have signed in with Google before. Anyone with a link can open it directly or paste it into **Join project** on the home page.
 - Owners can remove members; members can leave. Tasks assigned to someone who leaves or is removed become unassigned. The last owner can't be removed.
 

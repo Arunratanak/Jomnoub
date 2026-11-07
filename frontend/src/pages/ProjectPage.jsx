@@ -710,7 +710,7 @@ export default function ProjectPage() {
               <div className="card">
                 <h2 style={{ marginBottom: 4 }}><LinkIcon size={18} /> Invite link</h2>
                 <p className="muted" style={{ marginBottom: 12 }}>
-                  Anyone with the link can join as a member for 7 days. Only share it with your team.
+                  Anyone with the link can join as a member for 7 days. Only share it with your team. Generating a new link turns off any earlier one, including the one made with the project.
                 </p>
                 {invite && (
                   <div style={{ marginBottom: 12 }}>
