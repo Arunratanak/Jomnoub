@@ -7,7 +7,7 @@ import Task from '../models/Task.js';
 export async function listMyTasks(userId) {
   const projects = await Project.find({ 'members.user': userId }).select('_id');
 
-  const tasks = await Task.find({ assignee: userId, project: { $in: projects.map((p) => p._id) } })
+  const tasks = await Task.find({ assignees: userId, project: { $in: projects.map((p) => p._id) } })
     .populate('project', 'name')
     .lean();
 

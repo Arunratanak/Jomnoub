@@ -57,11 +57,11 @@ export async function runReminders({ dryRun }) {
 
   const tasks = await Task.find({
     status: { $ne: 'done' },
-    assignee: { $ne: null },
+    'assignees.0': { $exists: true },
     deadline: { $ne: null, $lte: dueSoonLimit },
   })
-    .select('title deadline assignee project')
-    .populate('assignee', 'name email isDemo googleId emailVerified')
+    .select('title deadline assignees project')
+    .populate('assignees', 'name email isDemo googleId emailVerified')
     .populate('project', 'name')
     .lean();
 
@@ -71,14 +71,17 @@ export async function runReminders({ dryRun }) {
   const claimed = [];
   let skipped = 0;
   try {
-    for (const t of tasks) {
-      if (!t.assignee?.email || !t.project) { skipped += 1; continue; } // deleted user/project
-      if (t.assignee.isDemo) { skipped += 1; continue; } // seed data: fake @example.invalid users
+    // Each person on a task gets their own reminder
+    for (const { task: t, person } of tasks.flatMap((task) => task.assignees.map((p) => ({ task, person: p })))) {
+      if (!person?.email || !t.project) { skipped += 1; continue; } // deleted user/project
+      if (person.isDemo) { skipped += 1; continue; } // seed data: fake @example.invalid users
       // Unverified address (password account): it might not be theirs, so never email it
-      if (!hasVerifiedEmail(t.assignee)) { skipped += 1; continue; }
+      if (!hasVerifiedEmail(person)) { skipped += 1; continue; }
 
       const type = t.deadline < today ? 'overdue' : 'due-soon';
-      const key = { task: t._id, type, deadline: t.deadline };
+      const key = { task: t._id, type, deadline: t.deadline, user: person._id };
+      // Sent before tasks could be shared, when the record didn't say who to
+      if (await ReminderLog.exists({ ...key, user: null })) { skipped += 1; continue; }
 
       let logId = null;
       if (dryRun) {
@@ -93,8 +96,8 @@ export async function runReminders({ dryRun }) {
         }
       }
 
-      const userId = String(t.assignee._id);
-      if (!byUser.has(userId)) byUser.set(userId, { user: t.assignee, overdue: [], dueSoon: [], logIds: [] });
+      const userId = String(person._id);
+      if (!byUser.has(userId)) byUser.set(userId, { user: person, overdue: [], dueSoon: [], logIds: [] });
       const group = byUser.get(userId);
       (type === 'overdue' ? group.overdue : group.dueSoon).push(t);
       if (logId) group.logIds.push(logId);

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import Avatar from './Avatar';
+import People from './People';
 import CommentBox from './CommentBox';
 import { CalendarIcon, CheckIcon, CommentIcon, PaperclipIcon } from './Icons';
 import { toast } from '../utils/feedback';
@@ -17,7 +17,7 @@ function dayLabel(key, todayKey, tomorrowKey) {
   return text;
 }
 
-function TimelineItem({ task: t, person, overdue, projectId, user, members, canChangeStatus, onOpen, onStatus, onCommentAdded, onFileAdded }) {
+function TimelineItem({ task: t, people, overdue, projectId, user, members, canChangeStatus, onOpen, onStatus, onCommentAdded, onFileAdded }) {
   const [commenting, setCommenting] = useState(false);
   const inputRef = useRef(null);
   const { uploading, addFiles } = useTaskFileUpload(projectId, t._id, onFileAdded);
@@ -31,8 +31,7 @@ function TimelineItem({ task: t, person, overdue, projectId, user, members, canC
 
       <div className="feed-meta">
         <span className="task-people">
-          <Avatar user={person} size={20} />
-          {person ? person.name : 'Unassigned'}
+          <People people={people} size={20} />
         </span>
         {canChangeStatus ? (
           <select className="select select-sm" value={t.status} onChange={(e) => onStatus(t, e.target.value)} aria-label={`Status of ${t.title}`}>
@@ -104,7 +103,7 @@ function TimelineItem({ task: t, person, overdue, projectId, user, members, canC
 
 // Tasks by date: Overdue first, then each date, then No deadline. Each one can be
 // opened, updated, commented on or given files right here.
-export default function TimelinePanel({ tasks, filtered, projectId, user, members, showDone, onShowDone, canChangeStatus, personOf, onOpen, onStatus, onCommentAdded, onFileAdded }) {
+export default function TimelinePanel({ tasks, filtered, projectId, user, members, showDone, onShowDone, canChangeStatus, peopleOf, onOpen, onStatus, onCommentAdded, onFileAdded }) {
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
   const todayKey = utcDay(today);
@@ -139,7 +138,7 @@ export default function TimelinePanel({ tasks, filtered, projectId, user, member
                   <TimelineItem
                     key={t._id}
                     task={t}
-                    person={personOf(t)}
+                    people={peopleOf(t)}
                     overdue={key === OVERDUE}
                     projectId={projectId}
                     user={user}

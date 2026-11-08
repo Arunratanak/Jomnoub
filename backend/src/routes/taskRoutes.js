@@ -13,6 +13,7 @@ router.post('/', createTaskLimiter, tasks.create);
 router.post('/assign-all', createTaskLimiter, tasks.createForEveryone);
 router.patch('/:taskId', loadTask, tasks.update);
 router.delete('/:taskId', loadTask, tasks.remove);
+router.post('/:taskId/take', loadTask, tasks.take);
 
 router.post('/:taskId/suggestion/accept', loadTask, tasks.acceptSuggestion);
 router.post('/:taskId/suggestion/decline', loadTask, tasks.declineSuggestion);

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, NavLink, Outlet, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, NavLink, Outlet } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { PROJECTS_CHANGED } from '../utils/events';
@@ -8,6 +8,7 @@ import useClickOutside from '../utils/useClickOutside';
 import Avatar, { ProjectMark } from './Avatar';
 import Logo from './Logo';
 import NotificationBell from './NotificationBell';
+import SearchBox from './SearchBox';
 import ThemeToggle from './ThemeToggle';
 import { CloseIcon, HomeIcon, LogoutIcon, MenuIcon, SearchIcon, TasksIcon, UserIcon } from './Icons';
 
@@ -92,12 +93,9 @@ function VerifyEmailBanner() {
 
 // The signed-in app frame: top bar with search, sidebar (or drawer), bottom nav on phones
 export default function Layout() {
-  const navigate = useNavigate();
-  const [params] = useSearchParams();
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [drawer, setDrawer] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [search, setSearch] = useState(params.get('q') || '');
   const [projects, setProjects] = useState(null);
 
   useEffect(() => {
@@ -132,13 +130,6 @@ export default function Layout() {
 
   const closeDrawer = () => setDrawer(false);
 
-  const submitSearch = (e) => {
-    e.preventDefault();
-    const q = search.trim();
-    setSearchOpen(false);
-    navigate(q ? `/dashboard?q=${encodeURIComponent(q)}` : '/dashboard');
-  };
-
   const shellClass = `${collapsed ? 'shell-collapsed' : ''} ${drawer ? 'shell-drawer' : ''}`.trim();
 
   return (
@@ -149,17 +140,7 @@ export default function Layout() {
           <Link to="/dashboard" className="logo" aria-label="Jomnoub home"><Logo /></Link>
         </div>
 
-        <form className={`search${searchOpen ? ' open' : ''}`} role="search" onSubmit={submitSearch}>
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search projects"
-            aria-label="Search projects"
-            maxLength={100}
-          />
-          <button type="submit" aria-label="Search"><SearchIcon size={20} /></button>
-        </form>
+        <SearchBox open={searchOpen} onDone={() => setSearchOpen(false)} />
 
         <div className="topbar-end">
           <button

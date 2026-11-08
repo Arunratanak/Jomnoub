@@ -200,7 +200,14 @@ li:last-child > .profile-project { border-bottom: 0; }
 .assignee-option:hover { border-color: var(--accent); background: var(--hover); }
 .assignee-option.selected { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
 .assignee-option:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
-.assignee-option > svg { flex: none; margin-left: auto; color: var(--accent-text); }
+/* A checkbox square on each person, so several can be ticked */
+.assignee-box { flex: none; display: grid; place-items: center; width: 20px; height: 20px; margin-left: auto; border: 2px solid var(--border); border-radius: 5px; background: var(--surface); color: var(--on-accent); transition: background-color 0.12s, border-color 0.12s; }
+.assignee-option.selected .assignee-box { border-color: var(--accent); background: var(--accent); }
+.assign-mode { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin-top: 6px; }
+.assign-mode-option { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; }
+.assign-mode-option:hover { border-color: var(--accent); }
+.assign-mode-option.selected { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.assign-mode-option:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 .assignee-text { display: grid; flex: 1; min-width: 0; line-height: 1.3; }
 .assignee-name { display: flex; align-items: center; min-width: 0; font-weight: 500; }
 .assignee-name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -386,7 +393,10 @@ li:last-child > .profile-project { border-bottom: 0; }
 .task-card.overdue { border-color: var(--danger); }
 .task-title { font-weight: 500; }
 .task-desc { color: var(--text-2); font-size: 13px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.task-people { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); }
+.task-people { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; color: var(--text-2); }
+.people-names { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task-people .you-tag { flex: none; margin-left: 0; }
+.task-people > small { flex: none; }
 .task-actions { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .task-actions .select-sm { margin-right: auto; }
 
@@ -557,6 +567,33 @@ details summary { cursor: pointer; color: var(--text-2); font-size: 13px; }
 .teammates-toggle:hover { background: var(--hover); }
 .teammates-toggle > svg { flex: none; transition: transform 0.15s; }
 .teammates-toggle.open > svg { transform: rotate(180deg); }
+/* Teammates' tasks, sorted under each person */
+.member-group { margin: 4px 0 12px; padding-left: 10px; border-left: 2px solid var(--border); }
+.member-group:last-child { margin-bottom: 0; }
+.member-group-head { display: flex; align-items: center; gap: 8px; min-width: 0; margin: 0 0 8px; font-size: 13px; font-weight: 600; }
+.member-group-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.member-group-head .muted { flex: none; font-weight: 400; }
+
+/* Search results under the top bar's box */
+.search { position: relative; }
+.search-panel { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 40; max-height: min(70vh, 480px); overflow-y: auto; padding: 6px; border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
+[data-theme='dark'] .search-panel { background: var(--hover); }
+.search-panel ul { display: grid; gap: 2px; }
+.search-stale { opacity: 0.6; transition: opacity 0.15s; }
+.search-heading { padding: 8px 10px 4px; color: var(--text-2); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.search-option { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+.search-option.active { background: var(--accent-soft); }
+.search-option mark { padding: 0; background: none; color: inherit; font-weight: 700; }
+.search-text { display: grid; flex: 1; min-width: 0; line-height: 1.3; }
+.search-title, .search-text small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.search-title { font-weight: 500; }
+.search-status { flex: none; width: 10px; height: 10px; margin: 0 9px; border-radius: 50%; }
+.search-all { border-top: 1px solid var(--border); border-radius: 0 0 8px 8px; color: var(--accent-text); font-size: 13px; }
+.search-note { padding: 10px; color: var(--text-2); font-size: 13px; }
+
+/* The app icon */
+.logo-mark { flex: none; display: block; border-radius: 22%; }
+.logo-mark-inverse { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85), 0 4px 14px rgba(0, 0, 0, 0.2); }
 .teammates-faces { display: inline-flex; flex: none; }
 .teammates-faces .avatar + .avatar { margin-left: -6px; }
 .teammates-overdue { color: var(--danger); font-weight: 500; white-space: nowrap; }

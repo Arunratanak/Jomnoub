@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion as Motion, useIsPresent } from 'motion/react';
 import api from '../api/client';
 import AttachmentPanel from './AttachmentPanel';
-import Avatar from './Avatar';
+import People from './People';
 import CommentList from './CommentList';
 import Modal from './Modal';
 import StatusStepper from './StatusStepper';
@@ -63,7 +63,7 @@ function SubtaskItem({ subtask: s, canEdit, onToggle, onSave, onDelete }) {
 }
 
 // What can change between tasks: kept separate so moving to another task starts it fresh
-function TaskBody({ projectId, task: t, person, user, isOwner, members, highlightCommentId, canEditSubtasks, onUpdated, onAttachmentCount, onCommentCount }) {
+function TaskBody({ projectId, task: t, people, user, isOwner, members, highlightCommentId, canEditSubtasks, onUpdated, onAttachmentCount, onCommentCount }) {
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
@@ -114,7 +114,7 @@ function TaskBody({ projectId, task: t, person, user, isOwner, members, highligh
     <>
       <div className="detail-meta">
         {statusNote(t) && <small className="muted">{statusNote(t)}</small>}
-        <span className="task-people"><Avatar user={person} size={22} /> {person ? person.name : 'Unassigned'}{t.suggestedBy && <small className="muted"> · waiting to accept</small>}</span>
+        <span className="task-people"><People people={people} size={22} />{t.suggestedBy && <small className="muted">· waiting to accept</small>}</span>
         {t.deadline && (
           <span className={`due${overdue ? ' overdue' : ''}`}>
             {overdue ? 'Overdue · was due' : 'Due'} {new Date(t.deadline).toLocaleDateString(undefined, { timeZone: 'UTC' })}
@@ -160,7 +160,7 @@ function TaskBody({ projectId, task: t, person, user, isOwner, members, highligh
         </form>
       )}
       {!canEditSubtasks && (
-        <p className="muted" style={{ marginTop: 8 }}><small>Only the owner or the person whose task this is can change subtasks.</small></p>
+        <p className="muted" style={{ marginTop: 8 }}><small>Only the owner or the people on this task can change subtasks.</small></p>
       )}
 
       <AttachmentPanel projectId={projectId} task={t} user={user} isOwner={isOwner} onCountChange={onAttachmentCount} />
@@ -179,7 +179,7 @@ function TaskBody({ projectId, task: t, person, user, isOwner, members, highligh
 }
 
 // Full view of one task: where it stands, how to move it, and the way to the next one
-export default function TaskDetail({ task: t, siblings, canChangeStatus, onStatus, onNavigate, onClose, ...body }) {
+export default function TaskDetail({ task: t, siblings, canChangeStatus, canTake, onTake, onStatus, onNavigate, onClose, ...body }) {
   const isPresent = useIsPresent();
   const shell = useRef(null);
   const [direction, setDirection] = useState(0);
@@ -233,9 +233,14 @@ export default function TaskDetail({ task: t, siblings, canChangeStatus, onStatu
       </div>
 
       <StatusStepper status={t.status} canChange={canChangeStatus} onChange={(status) => onStatus(t, status)} />
-      {!canChangeStatus && (
+      {canTake ? (
+        <div className="notice notice-row stepper-hint">
+          <span>Nobody has this task yet. Take it to start working on it.</span>
+          <button type="button" className="btn btn-sm btn-primary" onClick={() => onTake(t)}>Take this task</button>
+        </div>
+      ) : !canChangeStatus && (
         <p className="muted stepper-hint">
-          <small>{t.suggestedBy ? 'The owner has to accept this task before it can be moved.' : 'Only the owner or the person whose task this is can move it.'}</small>
+          <small>{t.suggestedBy && !t.assignees.length ? 'The owner has to accept this task before it can be moved.' : 'Only the owner or the people on this task can move it.'}</small>
         </p>
       )}
 

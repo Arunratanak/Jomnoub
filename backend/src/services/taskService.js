@@ -10,15 +10,27 @@ import { isObjectId } from '../validations/common.js';
 const STATUS_LABELS = { todo: 'To do', 'in-progress': 'In progress', done: 'Done' };
 const ASSIGNEE_FIELDS = 'name email picture';
 const NOT_A_MEMBER = 'Assignee must be a member of this project';
+const TAKEN = 'Someone already has this task';
 const MAX_SUBTASKS = 50;
 
 const populateTask = (task) =>
   task.populate([
-    { path: 'assignee', select: ASSIGNEE_FIELDS },
+    { path: 'assignees', select: ASSIGNEE_FIELDS },
     { path: 'suggestedBy', select: 'name' },
     { path: 'startedBy', select: 'name' },
     { path: 'completedBy', select: 'name' },
   ]);
+
+// Ids as strings, whether the people are loaded or not
+const idOf = (person) => String(person?._id || person);
+const assigneeIds = (task) => task.assignees.map(idOf);
+const ownerIdOf = (project) => idOf(project.members.find((m) => m.role === 'owner')?.user);
+
+// "Alex", "Alex and Sam", "Alex, Sam and Jordan"
+function namesOf(people) {
+  const names = people.map((p) => p.name);
+  return names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
 
 // The record of who moved a task and when. Back to To do starts over; reopening a
 // finished task clears the completion but keeps when work first started.
@@ -32,13 +44,16 @@ function statusRecord(task, status, userId) {
   };
 }
 
-const notifyAssigned = ({ project, user, task }) =>
-  notify([task.assignee._id], { actor: user._id, type: 'assigned', message: `assigned you to ${quote(task.title)}`, project: project._id, task: task._id });
+const notifyAssigned = ({ project, user, task }, people) =>
+  notify(people, { actor: user._id, type: 'assigned', message: `assigned you to ${quote(task.title)}`, project: project._id, task: task._id });
 
 // The owner can do anything to any task. A member can do anything to their own: one
-// assigned to them, or one they created that nobody else has been given.
+// they are assigned to, or one they created that nobody has been given.
 export const canManageTask = (role, task, userId) =>
-  role === 'owner' || (task.assignee ? task.assignee.equals(userId) : task.createdBy.equals(userId));
+  role === 'owner' || (task.assignees.length ? assigneeIds(task).includes(String(userId)) : task.createdBy.equals(userId));
+
+// A suggestion waiting for the owner, with nobody else on the task, can't be worked on yet
+const waitingOnOwner = (task) => Boolean(task.suggestedBy) && task.assignees.length === 0;
 
 // Always scoped to the project the user is a verified member of
 export async function findTaskInProject(project, taskId) {
@@ -51,108 +66,138 @@ export async function findTaskInProject(project, taskId) {
 export function listTasks(project) {
   return Task.find({ project: project._id })
     .sort({ deadline: 1, createdAt: -1 })
-    .populate('assignee', ASSIGNEE_FIELDS)
+    .populate('assignees', ASSIGNEE_FIELDS)
     .populate('suggestedBy', 'name')
     .populate('startedBy', 'name')
     .populate('completedBy', 'name');
 }
 
-// Only the owner can give work to the owner; a member's request becomes a suggestion
-const isSuggestionForOwner = (project, role, assignee) =>
-  Boolean(assignee) && role !== 'owner' && isProjectOwner(project, assignee);
+function requireMembers(project, ids) {
+  if (ids.some((id) => !isMember(project, id))) throw new BadRequestError(NOT_A_MEMBER);
+}
 
-export async function createTask({ project, role, user }, data) {
-  if (data.assignee && !isMember(project, data.assignee)) throw new BadRequestError(NOT_A_MEMBER);
+// Only the owner can give work to the owner. When a member includes the owner, the
+// owner gets a suggestion to accept instead, and everyone else is assigned directly.
+function splitChoice(project, role, ids) {
+  const ownerId = ownerIdOf(project);
+  const suggestOwner = role !== 'owner' && ids.includes(ownerId);
+  return { assignees: suggestOwner ? ids.filter((id) => id !== ownerId) : ids, suggestOwner };
+}
 
-  const suggest = isSuggestionForOwner(project, role, data.assignee);
+export async function createTask(context, data) {
+  const { project, role, user } = context;
+  const { separate, assignees: chosen = [], ...fields } = data;
+  requireMembers(project, chosen);
+  if (separate && chosen.length > 1) return createCopies(context, fields, chosen, `for ${chosen.length} members`);
+
+  const { assignees, suggestOwner } = splitChoice(project, role, chosen);
   const task = await Task.create({
-    ...data,
-    ...(suggest ? { assignee: null, suggestedBy: user._id, suggestedAt: new Date() } : {}),
-    ...(data.status ? statusRecord({}, data.status, user._id) : {}),
+    ...fields,
+    assignees,
+    ...(suggestOwner ? { suggestedBy: user._id, suggestedAt: new Date() } : {}),
+    ...(fields.status ? statusRecord({}, fields.status, user._id) : {}),
     project: project._id,
     createdBy: user._id,
   });
   await populateTask(task);
 
   await logActivity(project._id, user._id, `created task ${quote(task.title)}`);
-  if (suggest) await logActivity(project._id, user._id, `suggested ${quote(task.title)} for the owner`);
-  if (task.assignee) await notifyAssigned({ project, user, task });
+  if (suggestOwner) await logActivity(project._id, user._id, `suggested ${quote(task.title)} for the owner`);
+  await notifyAssigned({ project, user, task }, assignees);
   return task;
 }
 
-// "Assign to all": one task per member, so each person moves their own through the
-// stages. As with any task, a member's copy for the owner waits as a suggestion.
-export async function createTaskForEveryone({ project, role, user }, data) {
+// One task for each person, so each moves their own through the stages. As with any
+// task, a member's copy for the owner waits as a suggestion.
+async function createCopies({ project, role, user }, fields, memberIds, whom) {
   const tasks = [];
-  for (const { user: memberId } of project.members) {
-    const suggest = isSuggestionForOwner(project, role, memberId);
+  for (const memberId of memberIds) {
+    const suggest = role !== 'owner' && memberId === ownerIdOf(project);
     const task = await Task.create({
-      ...data,
-      assignee: suggest ? null : memberId,
+      ...fields,
+      assignees: suggest ? [] : [memberId],
       ...(suggest ? { suggestedBy: user._id, suggestedAt: new Date() } : {}),
+      ...(fields.status ? statusRecord({}, fields.status, user._id) : {}),
       project: project._id,
       createdBy: user._id,
     });
     await populateTask(task);
     tasks.push(task);
-    if (task.assignee) await notifyAssigned({ project, user, task });
+    if (!suggest) await notifyAssigned({ project, user, task }, [memberId]);
   }
-  await logActivity(project._id, user._id, `created task ${quote(data.title)} for all ${tasks.length} members`);
+  await logActivity(project._id, user._id, `created task ${quote(fields.title)} ${whom}`);
   return tasks;
 }
 
+// "Assign to all": a copy for every member
+export const createTaskForEveryone = (context, data) =>
+  createCopies(context, data, context.project.members.map((m) => idOf(m.user)), `for all ${context.project.members.length} members`);
+
 export async function updateTask({ project, role, user, task }, updates) {
   if (!canManageTask(role, task, user._id)) throw new ForbiddenError('You can only change your own tasks');
-  if (updates.assignee && !isMember(project, updates.assignee)) throw new BadRequestError(NOT_A_MEMBER);
+  if (updates.assignees) requireMembers(project, updates.assignees);
   // A suggestion has to be accepted before anyone works on it
-  if (updates.status && updates.status !== task.status && task.suggestedBy) {
+  if (updates.status && updates.status !== task.status && waitingOnOwner(task)) {
     throw new ConflictError('The owner has to accept this task before it can be moved');
   }
 
   const oldStatus = task.status;
-  const oldAssignee = task.assignee ? String(task.assignee) : null;
-  const fields = { ...updates };
+  const before = assigneeIds(task);
+  const { assignees: chosen, ...fields } = updates;
   let newlySuggested = false;
+  let added = [];
 
-  if ('assignee' in updates) {
-    const target = updates.assignee ? updates.assignee.toLowerCase() : null;
-    if (target !== oldAssignee && isSuggestionForOwner(project, role, target)) {
-      // A member picked the owner: the task waits for the owner's confirmation
+  if (chosen) {
+    const { assignees, suggestOwner } = splitChoice(project, role, chosen);
+    task.assignees = assignees;
+    added = assignees.filter((id) => !before.includes(id));
+    if (suggestOwner) {
+      // A member included the owner: the owner is asked to confirm
       newlySuggested = !task.suggestedBy;
-      fields.assignee = null;
       if (newlySuggested) {
         task.suggestedBy = user._id;
         task.suggestedAt = new Date();
       }
     } else {
-      // Any other assignee choice replaces a pending suggestion
-      fields.assignee = target;
+      // Any choice without the owner withdraws a pending suggestion
       task.suggestedBy = null;
       task.suggestedAt = null;
     }
   }
 
-  if (updates.status && updates.status !== oldStatus) {
-    Object.assign(fields, statusRecord(task, updates.status, user._id));
+  if (fields.status && fields.status !== oldStatus) {
+    Object.assign(fields, statusRecord(task, fields.status, user._id));
   }
   Object.assign(task, fields);
   await task.save();
   await populateTask(task);
 
   const title = quote(task.title);
-  if (updates.status && updates.status !== oldStatus) {
+  if (fields.status && fields.status !== oldStatus) {
     await logActivity(project._id, user._id,
-      `moved ${title} from ${STATUS_LABELS[oldStatus]} to ${STATUS_LABELS[updates.status]}`);
+      `moved ${title} from ${STATUS_LABELS[oldStatus]} to ${STATUS_LABELS[fields.status]}`);
   }
-  if ('assignee' in fields && (fields.assignee || null) !== oldAssignee) {
+  const after = assigneeIds(task);
+  if (chosen && (after.length !== before.length || after.some((id) => !before.includes(id)))) {
     await logActivity(project._id, user._id,
-      task.assignee ? `assigned ${title} to ${task.assignee.name}` : `unassigned ${title}`);
-    if (task.assignee) await notifyAssigned({ project, user, task });
+      after.length ? `assigned ${title} to ${namesOf(task.assignees)}` : `unassigned ${title}`);
+    await notifyAssigned({ project, user, task }, added);
   }
-  if (updates.status === 'done' && oldStatus !== 'done') {
+  if (fields.status === 'done' && oldStatus !== 'done') {
     await notify([task.createdBy], { actor: user._id, type: 'task-done', message: `completed ${title}`, project: project._id, task: task._id });
   }
   if (newlySuggested) await logActivity(project._id, user._id, `suggested ${title} for the owner`);
+  return task;
+}
+
+// Any member can pick up a task nobody has, for themselves only
+export async function takeTask({ project, user, task }) {
+  if (task.assignees.length || task.suggestedBy) throw new ConflictError(TAKEN);
+  task.assignees = [user._id];
+  await task.save();
+  await populateTask(task);
+  await logActivity(project._id, user._id, `took ${quote(task.title)}`);
+  await notify([task.createdBy], { actor: user._id, type: 'task-taken', message: `took ${quote(task.title)}`, project: project._id, task: task._id });
   return task;
 }
 
@@ -163,8 +208,7 @@ export async function deleteTask({ project, role, user, task }) {
   await task.deleteOne();
   await logActivity(project._id, user._id, `deleted task ${quote(task.title)}`);
   // Anyone with a stake in it should know it's gone
-  const ownerId = project.members.find((m) => m.role === 'owner')?.user;
-  await notify([ownerId, task.createdBy, task.assignee], { actor: user._id, type: 'task-deleted', message: `deleted task ${quote(task.title)}`, project: project._id });
+  await notify([ownerIdOf(project), task.createdBy, ...task.assignees], { actor: user._id, type: 'task-deleted', message: `deleted task ${quote(task.title)}`, project: project._id });
 }
 
 // ---------- Suggestions for the owner ----------
@@ -173,10 +217,11 @@ function requirePendingSuggestion(role, task) {
   if (!task.suggestedBy) throw new ConflictError('This task has no pending suggestion');
 }
 
+// The owner joins whoever else is already on the task
 export async function acceptSuggestion({ project, role, user, task }) {
   requirePendingSuggestion(role, task);
   const suggester = task.suggestedBy;
-  task.assignee = user._id;
+  if (!assigneeIds(task).includes(String(user._id))) task.assignees.push(user._id);
   task.suggestedBy = null;
   task.suggestedAt = null;
   await task.save();

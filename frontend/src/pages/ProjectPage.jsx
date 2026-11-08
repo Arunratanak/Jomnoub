@@ -21,7 +21,7 @@ import { projectGradient } from '../utils/colors';
 import { isOverdue } from '../utils/dates';
 import { notifyProjectsChanged, notifyTasksChanged } from '../utils/events';
 import { confirmDialog, toast } from '../utils/feedback';
-import { splitTodo, STATUSES, statusLabel, taskPerson } from '../utils/taskStatus';
+import { groupByPeople, splitTodo, STATUSES, statusLabel, taskPeople } from '../utils/taskStatus';
 import useTitle from '../utils/useTitle';
 
 // The chart library is large, so it only loads when the Progress tab is opened
@@ -30,7 +30,6 @@ const ProjectStats = lazy(() => import('../components/ProjectStats'));
 const UNREAD_CHECK_MS = 30000;
 const MOVED_HIGHLIGHT_MS = 900;
 const CARD_SPRING = { type: 'spring', stiffness: 380, damping: 34 };
-const EVERYONE = 'everyone'; // the assignee choice that makes a copy for each member
 const SHOW_TEAMMATES_KEY = 'jomnoub:show-teammates';
 
 // Only a convenience, so it has to work when browser storage doesn't
@@ -41,7 +40,8 @@ function loadShowTeammates() {
     return false;
   }
 }
-const emptyForm = { title: '', description: '', assignee: '', deadline: '' };
+const emptyForm = { title: '', description: '', assignees: [], separate: false, deadline: '' };
+const sameIds = (a, b) => a.length === b.length && a.every((id) => b.includes(id));
 const errorMessage = (err, fallback) => err.response?.data?.error || fallback;
 
 export default function ProjectPage() {
@@ -57,7 +57,7 @@ export default function ProjectPage() {
   const [form, setForm] = useState(emptyForm);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [initialAssignee, setInitialAssignee] = useState('');
+  const [initialAssignees, setInitialAssignees] = useState([]);
   const [showDone, setShowDone] = useState(false);
   const [filter, setFilter] = useState('all');
   const [dropColumn, setDropColumn] = useState(null);
@@ -200,7 +200,7 @@ export default function ProjectPage() {
   const openNewTask = () => {
     setEditingId(null);
     setForm(emptyForm);
-    setInitialAssignee('');
+    setInitialAssignees([]);
     setFormError('');
     setTaskFormOpen(true);
     setTab('board');
@@ -221,24 +221,27 @@ export default function ProjectPage() {
       description: form.description,
       deadline: form.deadline || null,
     };
-    // Only send the assignee if it changed, so editing other fields can't
+    // Only send the people if they changed, so editing other fields can't
     // accidentally accept or withdraw a pending suggestion
-    if (!editingId || form.assignee !== initialAssignee) body.assignee = form.assignee || null;
+    const peopleChanged = !sameIds(form.assignees, initialAssignees);
+    if (!editingId || peopleChanged) body.assignees = form.assignees;
+    if (!editingId && form.separate && form.assignees.length > 1) body.separate = true;
     try {
-      if (form.assignee === EVERYONE) {
-        delete body.assignee;
-        const res = await api.post(`/projects/${id}/tasks/assign-all`, body);
-        toast(`Added for all ${res.data.tasks.length} members.`);
+      const res = editingId
+        ? await api.patch(`/projects/${id}/tasks/${editingId}`, body)
+        : await api.post(`/projects/${id}/tasks`, body);
+      if (res.data.tasks) {
+        toast(`Added a copy for each of ${res.data.tasks.length} people.`);
       } else {
-        const res = editingId
-          ? await api.patch(`/projects/${id}/tasks/${editingId}`, body)
-          : await api.post(`/projects/${id}/tasks`, body);
-        const suggested = res.data.task.suggestedBy && form.assignee !== initialAssignee && !isOwnerRole();
-        toast(suggested ? 'Suggested to the owner. They need to confirm it.' : editingId ? 'Task saved.' : 'Task added.');
+        const suggested = res.data.task.suggestedBy && peopleChanged && !isOwnerRole();
+        const others = res.data.task.assignees.length > 0;
+        toast(suggested
+          ? (others ? 'Task saved. The owner was asked to confirm joining it.' : 'Suggested to the owner. They need to confirm it.')
+          : editingId ? 'Task saved.' : 'Task added.');
       }
       notifyTasksChanged();
-      // Don't let a task just given to a teammate vanish into the folded list
-      if (form.assignee && form.assignee !== user._id) changeShowTeammates(true);
+      // Don't let a task just given to teammates vanish into the folded list
+      if (form.assignees.some((a) => a !== user._id) && !form.assignees.includes(user._id)) changeShowTeammates(true);
       closeTaskForm();
       await loadTasks();
     } catch (err) {
@@ -259,14 +262,15 @@ export default function ProjectPage() {
 
   const startEdit = (t) => {
     const ownerMember = data.project.members.find((m) => m.role === 'owner');
-    // A pending suggestion is shown as the owner's
-    const current = t.suggestedBy ? ownerMember?.user._id || '' : t.assignee?._id || '';
+    // A pending suggestion is shown as ticked for the owner
+    const current = taskPeople(t, ownerMember?.user).map((p) => p._id);
     setEditingId(t._id);
-    setInitialAssignee(current);
+    setInitialAssignees(current);
     setForm({
       title: t.title,
       description: t.description || '',
-      assignee: current,
+      assignees: current,
+      separate: false,
       deadline: t.deadline ? t.deadline.slice(0, 10) : '',
     });
     setFormError('');
@@ -317,6 +321,26 @@ export default function ProjectPage() {
       setError(errorMessage(err, 'Could not delete the task.'));
     } finally {
       setLeavingId(null);
+    }
+  };
+
+  // A member picking up a task nobody has
+  const takeTask = async (t) => {
+    try {
+      setError('');
+      const res = await api.post(`/projects/${id}/tasks/${t._id}/take`);
+      applyTask(res.data.task);
+      setMovedId(t._id);
+      clearTimeout(movedTimer.current);
+      movedTimer.current = setTimeout(() => setMovedId(null), MOVED_HIGHLIGHT_MS);
+      notifyTasksChanged();
+      toast('It\'s yours now. You can start it whenever you\'re ready.');
+      loadActivity();
+    } catch (err) {
+      const message = errorMessage(err, 'Could not take the task.');
+      if (detailId) toast(message, 'error');
+      else setError(message);
+      loadTasks().catch(() => {});
     }
   };
 
@@ -510,18 +534,21 @@ export default function ProjectPage() {
   const { project, role } = data;
   const isOwner = role === 'owner';
   // Same rule as the server: the owner can do anything; a member only to their own tasks,
-  // meaning assigned to them, or created by them with nobody else assigned
-  const canManage = (t) => isOwner || (t.assignee ? t.assignee._id === user._id : t.createdBy === user._id);
-  const isAssignee = (t) => t.assignee?._id === user._id;
-  // A suggestion has to be accepted before anyone works on it
-  const canMove = (t) => !t.suggestedBy && canManage(t);
+  // meaning ones they're on, or ones they created with nobody else assigned
+  const canManage = (t) => isOwner || (t.assignees.length ? t.assignees.some((a) => a._id === user._id) : t.createdBy === user._id);
+  const isAssignee = (t) => t.assignees.some((a) => a._id === user._id);
+  // A suggestion for the owner alone has to be accepted before anyone works on it
+  const canMove = (t) => !(t.suggestedBy && !t.assignees.length) && canManage(t);
+  // Members can pick up a task nobody has, when they couldn't otherwise work on it
+  const canTake = (t) => !isOwner && !t.assignees.length && !t.suggestedBy && !canManage(t);
   const settings = projectForm || { name: project.name, description: project.description || '' };
   const ownerMember = project.members.find((m) => m.role === 'owner');
-  const personOf = (t) => taskPerson(t, ownerMember?.user);
+  const peopleOf = (t) => taskPeople(t, ownerMember?.user);
   const membersSorted = [...project.members].sort((a, b) => (a.role === b.role ? 0 : a.role === 'owner' ? -1 : 1));
   const pendingSuggestions = tasks.filter((t) => t.suggestedBy);
   const detailTask = tasks.find((t) => t._id === detailId);
-  const assigningToOwner = !isOwner && ownerMember && form.assignee === ownerMember.user._id;
+  const assigningToOwner = !isOwner && ownerMember && form.assignees.includes(ownerMember.user._id);
+  const makingCopies = !editingId && form.separate && form.assignees.length > 1;
 
   const TABS = [
     { value: 'board', label: 'Board' },
@@ -537,27 +564,28 @@ export default function ProjectPage() {
     { value: 'all', label: 'All', test: () => true },
     { value: 'mine', label: 'Assigned to me', test: isAssignee },
     { value: 'overdue', label: 'Overdue', test: isOverdue },
-    { value: 'unassigned', label: 'Unassigned', test: (t) => !personOf(t) },
+    { value: 'unassigned', label: 'Unassigned', test: (t) => peopleOf(t).length === 0 },
     ...(pendingSuggestions.length ? [{ value: 'suggested', label: `Suggestions (${pendingSuggestions.length})`, test: (t) => t.suggestedBy }] : []),
   ];
   const activeFilter = FILTERS.find((f) => f.value === filter) || FILTERS[0];
   const visibleTasks = tasks.filter(activeFilter.test);
-  const isMine = (t) => personOf(t)?._id === user._id;
+  const isMine = (t) => peopleOf(t).some((p) => p._id === user._id);
   const inColumn = (status) => visibleTasks
     .filter((t) => t.status === status)
     .sort((a, b) => isMine(b) - isMine(a)); // your own first
 
   // Cards only re-measure when this changes, not on every keystroke elsewhere on the page
-  const boardLayoutKey = `${showTeammates}|${visibleTasks.map((t) => `${t._id}:${t.status}:${personOf(t)?._id}`).join()}`;
+  const boardLayoutKey = `${showTeammates}|${visibleTasks.map((t) => `${t._id}:${t.status}:${peopleOf(t).map((p) => p._id).join('+')}`).join()}`;
 
   // The tasks the window's Previous and Next step through, in the order the column shows them
   const detailSiblings = (() => {
     if (!detailTask) return [];
     const items = inColumn(detailTask.status);
     if (detailTask.status !== 'todo' || filter !== 'all') return items;
-    const { mine, open, teammates } = splitTodo(items, personOf, user._id);
+    const { mine, open, teammates } = splitTodo(items, peopleOf, user._id);
     const includeTeammates = showTeammates || teammates.includes(detailTask);
-    return [...mine, ...open, ...(includeTeammates ? teammates : [])];
+    const grouped = groupByPeople(teammates, peopleOf).flatMap((g) => g.tasks);
+    return [...mine, ...open, ...(includeTeammates ? grouped : [])];
   })();
 
   return (
@@ -643,7 +671,7 @@ export default function ProjectPage() {
           showDone={showDone}
           onShowDone={setShowDone}
           canChangeStatus={canMove}
-          personOf={personOf}
+          peopleOf={peopleOf}
           onOpen={openTask}
           onStatus={changeStatus}
           onCommentAdded={onCommentAdded}
@@ -674,8 +702,10 @@ export default function ProjectPage() {
                   <TaskCard
                     projectId={id}
                     task={t}
-                    person={personOf(t)}
+                    people={peopleOf(t)}
                     isMine={isMine(t)}
+                    canTake={canTake(t)}
+                    onTake={takeTask}
                     onFileAdded={onFileAdded}
                     isOwner={isOwner}
                     canManage={canManage(t)}
@@ -713,7 +743,7 @@ export default function ProjectPage() {
                   {items.length > 0 && col.value === 'todo' && filter === 'all' ? (
                     <TodoGroups
                       tasks={items}
-                      personOf={personOf}
+                      peopleOf={peopleOf}
                       currentUserId={user._id}
                       showTeammates={showTeammates}
                       onToggle={() => changeShowTeammates(!showTeammates)}
@@ -857,7 +887,9 @@ export default function ProjectPage() {
           onAttachmentCount={(change) => changeFileCount(detailTask._id, change)}
           onCommentCount={(total) => setCommentTotal(detailTask._id, total)}
           members={membersSorted}
-          person={personOf(detailTask)}
+          people={peopleOf(detailTask)}
+          canTake={canTake(detailTask)}
+          onTake={takeTask}
           highlightCommentId={params.get('comment')}
           onClose={closeTask}
         />
@@ -895,21 +927,17 @@ export default function ProjectPage() {
               <span id="assignee-label">Assignee</span>
               <AssigneePicker
                 members={membersSorted}
-                value={form.assignee}
-                onChange={(assignee) => setForm({ ...form, assignee })}
+                value={form.assignees}
+                onChange={(assignees) => setForm({ ...form, assignees })}
+                separate={form.separate}
+                onSeparateChange={(separate) => setForm({ ...form, separate })}
+                canSeparate={!editingId}
                 labelledBy="assignee-label"
                 currentUserId={user._id}
                 isOwner={isOwner}
-                everyoneValue={!editingId && project.members.length > 1 ? EVERYONE : null}
               />
               {assigningToOwner && (
-                <small className="muted">You can't assign work to the owner directly. They'll get a suggestion to accept or decline.</small>
-              )}
-              {form.assignee === EVERYONE && (
-                <small className="muted">
-                  Each of the {project.members.length} members gets their own copy to move through the stages.
-                  {!isOwner && " The owner's copy waits as a suggestion for them to accept."}
-                </small>
+                <small className="muted">You can't assign work to the owner directly. They'll get a suggestion to accept or decline{makingCopies ? ' for their copy' : ''}.</small>
               )}
             </div>
             <label className="field">
@@ -919,7 +947,7 @@ export default function ProjectPage() {
             {formError && <p className="alert">{formError}</p>}
             <div className="form-actions">
               <button type="button" className="btn" onClick={closeTaskForm}>Cancel</button>
-              <button type="submit" className="btn btn-primary">{editingId ? 'Save changes' : assigningToOwner ? 'Add and suggest' : form.assignee === EVERYONE ? 'Add for everyone' : 'Add task'}</button>
+              <button type="submit" className="btn btn-primary">{editingId ? 'Save changes' : makingCopies ? `Add ${form.assignees.length} copies` : assigningToOwner ? 'Add and suggest' : 'Add task'}</button>
             </div>
           </form>
         </Modal>

@@ -27,7 +27,7 @@ export async function getAccount(user) {
 // Counts of the person's assigned tasks, only in projects they still belong to
 export async function getSummary(userId) {
   const projects = await Project.find({ 'members.user': userId }).select('name members').sort({ updatedAt: -1 }).lean();
-  const tasks = await Task.find({ assignee: userId, project: { $in: projects.map((p) => p._id) } })
+  const tasks = await Task.find({ assignees: userId, project: { $in: projects.map((p) => p._id) } })
     .select('project status deadline')
     .lean();
 

@@ -56,7 +56,7 @@ async function clearDemo() {
     projects: (await Project.deleteMany({ _id: { $in: demoProjectIds } })).deletedCount,
   };
   // If demo users were added to real projects, take them out and unassign their tasks
-  await Task.updateMany({ assignee: { $in: demoUserIds } }, { assignee: null });
+  await Task.updateMany({ assignees: { $in: demoUserIds } }, { $pull: { assignees: { $in: demoUserIds } } });
   await Task.updateMany({ suggestedBy: { $in: demoUserIds } }, { suggestedBy: null, suggestedAt: null });
   await Project.updateMany({ 'members.user': { $in: demoUserIds } }, { $pull: { members: { user: { $in: demoUserIds } } } });
   counts.users = (await User.deleteMany({ _id: { $in: demoUserIds } })).deletedCount;
@@ -92,7 +92,7 @@ async function seed() {
       status,
       ...(status !== 'todo' ? { startedAt: new Date(Date.now() - (3 + i % 4) * DAY), startedBy: people[assignee || creator]._id } : {}),
       ...(status === 'done' ? { completedAt: new Date(Date.now() - (1 + i % 3) * DAY), completedBy: people[assignee || creator]._id } : {}),
-      assignee: assignee ? people[assignee]._id : null,
+      assignees: assignee ? [people[assignee]._id] : [],
       deadline: days === null ? null : new Date(today.getTime() + days * DAY),
       createdBy: people[creator]._id,
       subtasks: (DEMO_SUBTASKS[title] || []).map(([t, note, done]) => ({ title: t, note, done })),
@@ -161,7 +161,7 @@ Demo data created
   Project:      "${project.name}"  ->  /projects/${project.id}
   Teammates:    ${teammates.map((u) => u.name).join(', ')} (fake, @example.invalid, isDemo)
   Tasks:        ${tasks.length} (${Object.entries(byStatus).map(([k, v]) => `${v} ${k}`).join(', ')})
-                ${overdue} overdue, ${dueThisWeek} due within 7 days, ${tasks.filter((t) => !t.assignee).length} unassigned
+                ${overdue} overdue, ${dueThisWeek} due within 7 days, ${tasks.filter((t) => !t.assignees.length).length} unassigned
   Activity:     ${events.length} entries over the last 12 days
   Chat:         ${DEMO_MESSAGES.length} messages, ${commentTotal} task comments, subtasks and 1 suggestion waiting for you
 

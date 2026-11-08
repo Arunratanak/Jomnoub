@@ -46,7 +46,7 @@ export async function removeMember(project, actor, actorRole, userId) {
   project.members = project.members.filter((m) => !m.user.equals(userId));
   await project.save();
   // Keep the rule "assignees must be members": unassign their tasks in this project
-  await Task.updateMany({ project: project._id, assignee: userId }, { assignee: null });
+  await Task.updateMany({ project: project._id, assignees: userId }, { $pull: { assignees: userId } });
   await Task.updateMany({ project: project._id, suggestedBy: userId }, { suggestedBy: null, suggestedAt: null });
   // Their old notifications link into a project they can no longer open
   await deleteUserProjectNotifications(userId, project._id);

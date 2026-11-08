@@ -1,15 +1,15 @@
-import Avatar from './Avatar';
+import { Faces } from './People';
 import { ChevronDownIcon } from './Icons';
 import { isOverdue } from '../utils/dates';
-import { splitTodo } from '../utils/taskStatus';
-
-const MAX_FACES = 4;
+import { groupByPeople, joinNames, splitTodo } from '../utils/taskStatus';
 
 // The To do column, for the person looking at it: their own work first, then anything
-// nobody has taken yet, with teammates' tasks folded away behind a button.
-export default function TodoGroups({ tasks, personOf, currentUserId, showTeammates, onToggle, renderCard }) {
-  const { mine, open, teammates } = splitTodo(tasks, personOf, currentUserId);
-  const people = [...new Map(teammates.map((t) => [personOf(t)._id, personOf(t)])).values()];
+// nobody has taken yet, with teammates' tasks folded away behind a button and, once
+// opened, sorted under each person.
+export default function TodoGroups({ tasks, peopleOf, currentUserId, showTeammates, onToggle, renderCard }) {
+  const { mine, open, teammates } = splitTodo(tasks, peopleOf, currentUserId);
+  const groups = groupByPeople(teammates, peopleOf);
+  const people = [...new Map(teammates.flatMap(peopleOf).map((p) => [p._id, p])).values()];
   const overdue = teammates.filter(isOverdue).length;
 
   return (
@@ -34,16 +34,23 @@ export default function TodoGroups({ tasks, personOf, currentUserId, showTeammat
             onClick={onToggle}
             aria-expanded={showTeammates}
           >
-            <span className="teammates-faces" aria-hidden="true">
-              {people.slice(0, MAX_FACES).map((p) => <Avatar key={p._id} user={p} size={22} />)}
-            </span>
+            <Faces people={people} size={22} />
             <span className="row-main">
               {showTeammates ? 'Hide' : 'Show'} teammates' tasks ({teammates.length})
               {overdue > 0 && <small className="teammates-overdue"> · {overdue} overdue</small>}
             </span>
             <ChevronDownIcon size={18} />
           </button>
-          {showTeammates && teammates.map(renderCard)}
+          {showTeammates && groups.map((g) => (
+            <section key={g.key} className="member-group" aria-label={`${joinNames(g.people)}'s tasks`}>
+              <h4 className="member-group-head">
+                <Faces people={g.people} size={22} />
+                <span className="member-group-name">{joinNames(g.people)}</span>
+                <span className="muted">({g.tasks.length})</span>
+              </h4>
+              {g.tasks.map(renderCard)}
+            </section>
+          ))}
         </div>
       )}
     </>

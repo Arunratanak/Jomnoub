@@ -4,11 +4,12 @@ import User from '../models/User.js';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Progress statistics for one project: completion, counts by status,
-// overdue / due within 7 days (open tasks only), and workload per assignee
+// overdue / due within 7 days (open tasks only), and workload per person (a shared task
+// counts once for each of its people)
 export async function getProjectStats(project) {
   const tasks = await Task.find({ project: project._id })
-    .select('status deadline assignee suggestedBy')
-    .populate('assignee', 'name')
+    .select('status deadline assignees suggestedBy')
+    .populate('assignees', 'name')
     .lean();
 
   // A suggestion waiting for the owner counts as the owner's work
@@ -35,12 +36,14 @@ export async function getProjectStats(project) {
       else if (t.deadline <= weekAhead) dueThisWeek += 1;
     }
 
-    const person = t.assignee || (t.suggestedBy ? owner : null);
-    const key = person ? String(person._id) : 'unassigned';
-    const entry = workload.get(key) || { name: person?.name || 'Unassigned', open: 0, done: 0 };
-    if (open) entry.open += 1;
-    else entry.done += 1;
-    workload.set(key, entry);
+    const people = t.assignees.length ? t.assignees : t.suggestedBy && owner ? [owner] : [null];
+    for (const person of people) {
+      const key = person ? String(person._id) : 'unassigned';
+      const entry = workload.get(key) || { name: person?.name || 'Unassigned', open: 0, done: 0 };
+      if (open) entry.open += 1;
+      else entry.done += 1;
+      workload.set(key, entry);
+    }
   }
 
   const total = tasks.length;

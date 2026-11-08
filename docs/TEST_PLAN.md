@@ -287,7 +287,24 @@ Use the same two accounts, A (owner) and B (member).
 | 19.7 | Drag a card over another column | Columns are outlined, the one under the card is highlighted, and the card lands there smoothly |
 | 19.8 | Turn on your device's "reduce motion" setting and repeat 19.1 | Cards move without gliding |
 
-## 20. Cleanup
+## 20. Several people, taking tasks, grouping and search
+
+| # | Step | Expected |
+|---|---|---|
+| 20.1 | A: Add task, tick B and C, keep **One shared task** | One card showing both faces and names; both are notified, and either can move it |
+| 20.2 | A: Add task, tick B and C, choose **A copy for each person** | Two tasks, one each; moving one leaves the other |
+| 20.3 | A: tick **Everyone** | All members are ticked; clicking it again clears them |
+| 20.4 | A: edit a shared task, untick one person | They are taken off and can no longer move it; there is no copy option when editing |
+| 20.5 | B (member): Add task, tick A (owner) and C | C is assigned; A gets a suggestion to accept, which adds A beside C |
+| 20.6 | A: create a project from a template and invite B; B: open it | Each template task shows **Take**; taking one makes it B's, with Start, Edit and Delete |
+| 20.7 | B: open an unassigned task's window | It offers **Take this task**; after taking it, the stages can be pressed |
+| 20.8 | B: To do, **Show teammates' tasks** | Tasks are sorted under each person's name and picture, with a count; a task shared by two people has its own group |
+| 20.9 | Type part of a task title in the top search box | Matching tasks and projects appear as you type, with the match in bold |
+| 20.10 | Press the down arrow then Enter, or click a task result | The task opens in its project, and the search box clears |
+| 20.11 | Search from an account that isn't in the project | Its tasks are not found |
+| 20.12 | Look at the browser tab and the top-left logo | The new Jomnoub icon is shown; on a phone, "Add to home screen" uses it too |
+
+## 21. Cleanup
 
 - A: delete "Test project" and "Private project" (Settings tab > Delete project on each).
 - If you used demo data: `npm run seed:clear` in `backend`.

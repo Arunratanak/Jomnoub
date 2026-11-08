@@ -51,7 +51,7 @@ export async function addComment({ project, user, task }, text) {
   const earlier = await Comment.distinct('author', { task: task._id });
   const stillMembers = new Set(memberIds.map(String));
   const mentioned = new Set(mentions.map(String));
-  const involved = [task.assignee, task.createdBy, ...earlier]
+  const involved = [...task.assignees, task.createdBy, ...earlier]
     .filter(Boolean)
     .map(String)
     .filter((id) => stillMembers.has(id) && !mentioned.has(id));

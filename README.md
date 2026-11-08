@@ -19,16 +19,17 @@ Built as a full-stack course final project.
 - Owners can remove members; members can leave. Tasks assigned to someone who leaves or is removed become unassigned. The last owner can't be removed.
 
 **Tasks**
-- Title, description, status (To do / In progress / Done), deadline and assignee. The assignee is chosen from the project's members, shown with their pictures and names.
+- Title, description, status (To do / In progress / Done), deadline and assignees. People are ticked from the project's members, shown with their pictures and names; a task can have nobody, one person or several.
 - The owner can edit, move and delete any task. A member can do the same to their own: a task assigned to them, or one they created that nobody else has been given. Once a member gives a task to a teammate, it's the teammate's.
-- **Assign to all:** a new task can go to everyone, which creates a separate copy for each member so each person tracks their own.
-- **Suggestions:** members can't assign work to the owner. Choosing the owner creates a suggestion: the card shows the owner's name with "waiting to accept", and nobody can move it until the owner accepts or declines. Accepting makes the owner the assignee; declining leaves it unassigned.
-- **Subtasks:** each task can have up to 50 subtasks with a description and a done checkbox. The owner and the person whose task it is can change them; other members can read them.
+- **Several people:** with two or more people ticked on a new task, you choose **One shared task** (one card that any of them can move) or **A copy for each person** (separate tasks, so each tracks their own). **Everyone** ticks all members at once.
+- **Taking a task:** a member can **Take** a task nobody has, such as one from a template, which assigns it to them. The owner can still assign anything.
+- **Suggestions:** members can't assign work to the owner. Including the owner creates a suggestion for them, while anyone else ticked is assigned straight away. For a task waiting only on the owner, the card shows the owner's name with "waiting to accept", and nobody can move it until the owner accepts or declines. Accepting makes the owner the assignee; declining leaves it unassigned.
+- **Subtasks:** each task can have up to 50 subtasks with a description and a done checkbox. The owner and the people on the task can change them; other members can read them.
 - **Moving between tasks:** the task window has Previous and Next buttons (or the left and right arrow keys) to step through a column without closing it.
 - **Moving a task along:** each card shows its next step (Start, Mark complete, Reopen), and an In progress card can go back to To do. The task window shows all three stages, so a task can be moved in one click, and cards glide to their new column. Stages look different at a glance, cards record who started and completed them and when, and every move can be undone from the confirmation message.
-- **Comments and @mentions:** any member can comment on a task. Typing `@` lists the project's members, and the mentioned person is notified. The task's assignee, creator and earlier commenters are told about new comments. Authors can delete their own comments and the owner can delete any. A task's address includes `?task=<id>`, so tasks can be linked to directly.
+- **Comments and @mentions:** any member can comment on a task. Typing `@` lists the project's members, and the mentioned person is notified. The task's assignees, creator and earlier commenters are told about new comments. Authors can delete their own comments and the owner can delete any. A task's address includes `?task=<id>`, so tasks can be linked to directly.
 - **Attachments:** members can add documents, spreadsheets, slides, images and zip files to a task (up to 10 MB each, 20 per task, 500 MB per project and 1 GB per person). Files are stored in a private Cloudflare R2 bucket, and every download goes through the API's membership checks. Without R2 settings, they go in the database instead, which suits local development.
-- The To do column puts your own tasks first, then unassigned ones, with teammates' tasks folded behind a button that remembers your choice. Your tasks also come first in the other columns.
+- The To do column puts your own tasks first, then unassigned ones, with teammates' tasks folded behind a button that remembers your choice and, once opened, sorted under each person (or each pair of people, for a task they share). Your tasks also come first in the other columns.
 - Clicking anywhere on a task card opens the task, on the board and the Timeline; buttons inside the card keep their own action.
 - Board view with three status columns, filters (assigned to me, overdue, unassigned, suggestions) and drag and drop; overdue tasks are highlighted.
 
@@ -47,7 +48,7 @@ Built as a full-stack course final project.
 - Once a day, a GitHub Actions workflow calls the backend, which emails each person one summary of their unfinished tasks that are overdue or due within 2 days (via Resend). The same reminder is never sent twice.
 
 **Interface**
-- App frame with a top bar, project search, a collapsible sidebar (a drawer plus bottom navigation on phones), and project pages with Board, Chat, Progress, Members, Activity and Settings tabs. The open tab is kept in the URL, so refreshing stays on it.
+- App frame with a top bar, search across projects and tasks (results appear as you type and open a task directly), a collapsible sidebar (a drawer plus bottom navigation on phones), and project pages with Board, Chat, Progress, Members, Activity and Settings tabs. The open tab is kept in the URL, so refreshing stays on it.
 - Toast messages and styled confirm dialogs. If a session expires, you're sent to sign in and then back to the same page.
 - Green theme with a light/dark toggle. It starts from the device's preference and remembers your choice in this browser.
 
@@ -153,9 +154,11 @@ All routes are under `/api`. Everything requires login except `GET /status`, `PO
 | `DELETE /projects/:projectId/members/:userId` | owner (remove), or the member themselves (leave) |
 | `POST`, `DELETE /projects/:projectId/invites` | owner (generate / disable link) |
 | `POST /projects/:projectId/tasks/assign-all` | members (a task for each member) |
-| `GET`, `POST /projects/:projectId/tasks`, `PATCH`, `DELETE .../tasks/:taskId` | members (edit, move, delete: the owner, the assignee, or the creator if nobody is assigned) |
+| `POST /projects/:projectId/tasks/:taskId/take` | any member, for a task nobody has |
+| `GET /search?q=` | your projects and tasks matching the text, only from projects you belong to |
+| `GET`, `POST /projects/:projectId/tasks`, `PATCH`, `DELETE .../tasks/:taskId` | members (edit, move, delete: the owner, anyone assigned, or the creator if nobody is assigned). `POST` takes `assignees` (a list of member ids) and, with `separate: true`, makes a copy for each |
 | `POST .../tasks/:taskId/suggestion/accept`, `/decline` | owner |
-| `POST .../tasks/:taskId/subtasks`, `PATCH`, `DELETE .../subtasks/:subtaskId` | the owner, the assignee, or the creator if nobody is assigned |
+| `POST .../tasks/:taskId/subtasks`, `PATCH`, `DELETE .../subtasks/:subtaskId` | the owner, anyone assigned, or the creator if nobody is assigned |
 | `GET`, `POST .../tasks/:taskId/attachments`, `GET .../attachments/:attachmentId/download` | members |
 | `DELETE .../tasks/:taskId/attachments/:attachmentId` | the uploader, the task's creator, or the owner |
 | `GET`, `POST .../tasks/:taskId/comments` | members |

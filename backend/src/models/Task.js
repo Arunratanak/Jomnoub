@@ -18,19 +18,20 @@ const taskSchema = new mongoose.Schema(
     completedAt: { type: Date, default: null },
     completedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     deadline: { type: Date, default: null },
-    assignee: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    // Everyone working on the task. Empty means nobody has it yet.
+    assignees: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     subtasks: [subtaskSchema],
     attachmentCount: { type: Number, default: 0 }, // shown on task cards
     commentCount: { type: Number, default: 0 }, // shown on task cards
     // Members can't assign work to the owner, only suggest it. While suggestedBy is
-    // set, the task waits for the owner to accept (becomes assignee) or decline.
+    // set, the task waits for the owner to accept (joins the assignees) or decline.
     suggestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     suggestedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
 
-taskSchema.index({ assignee: 1, deadline: 1 });
+taskSchema.index({ assignees: 1, deadline: 1 });
 
 export default mongoose.model('Task', taskSchema);

@@ -15,18 +15,40 @@ export const NEXT_STEP = {
   done: { status: 'in-progress', label: 'Reopen' },
 };
 
-// Who a task is for: a suggestion waiting for the owner is already the owner's to take
-export const taskPerson = (t, owner) => t.assignee || (t.suggestedBy ? owner : null);
+// Everyone a task is for: its assignees, plus the owner while a suggestion waits for them
+export function taskPeople(t, owner) {
+  const people = [...(t.assignees || [])];
+  if (t.suggestedBy && owner && !people.some((p) => p._id === owner._id)) people.push(owner);
+  return people;
+}
+
+// "Alex", "Alex and Sam", "Alex, Sam and Jordan"
+export function joinNames(people) {
+  const names = people.map((p) => p.name);
+  return names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
 
 // How the To do column groups tasks for the person looking at it
-export function splitTodo(tasks, personOf, currentUserId) {
+export function splitTodo(tasks, peopleOf, currentUserId) {
+  const includesMe = (t) => peopleOf(t).some((p) => p._id === currentUserId);
   return {
-    mine: tasks.filter((t) => personOf(t)?._id === currentUserId),
-    open: tasks.filter((t) => !personOf(t)),
-    teammates: tasks
-      .filter((t) => personOf(t) && personOf(t)._id !== currentUserId)
-      .sort((a, b) => personOf(a).name.localeCompare(personOf(b).name)),
+    mine: tasks.filter(includesMe),
+    open: tasks.filter((t) => peopleOf(t).length === 0),
+    teammates: tasks.filter((t) => peopleOf(t).length > 0 && !includesMe(t)),
   };
+}
+
+// Teammates' tasks, one group per person, or per pair of people for a task they share,
+// in name order
+export function groupByPeople(tasks, peopleOf) {
+  const groups = new Map();
+  for (const t of tasks) {
+    const people = [...peopleOf(t)].sort((a, b) => a.name.localeCompare(b.name));
+    const key = people.map((p) => p._id).join('+');
+    if (!groups.has(key)) groups.set(key, { key, people, tasks: [] });
+    groups.get(key).tasks.push(t);
+  }
+  return [...groups.values()].sort((a, b) => joinNames(a.people).localeCompare(joinNames(b.people)));
 }
 
 // A click anywhere on a task's card opens it, unless it landed on one of the card's own

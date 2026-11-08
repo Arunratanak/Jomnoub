@@ -10,10 +10,16 @@ export async function list(req, res) {
   res.json({ tasks: await taskService.listTasks(req.project) });
 }
 
-// POST /api/projects/:projectId/tasks
+// POST /api/projects/:projectId/tasks. With separate: true and two or more people, makes
+// a copy for each and answers { tasks }; otherwise { task }.
 export async function create(req, res) {
-  const task = await taskService.createTask(context(req), createTaskSchema.parse(req.body));
-  res.status(201).json({ task });
+  const result = await taskService.createTask(context(req), createTaskSchema.parse(req.body));
+  res.status(201).json(Array.isArray(result) ? { tasks: result } : { task: result });
+}
+
+// POST /api/projects/:projectId/tasks/:taskId/take
+export async function take(req, res) {
+  res.json({ task: await taskService.takeTask(context(req)) });
 }
 
 // POST /api/projects/:projectId/tasks/assign-all

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import Avatar from './Avatar';
-import { AlertIcon, CalendarIcon, CheckIcon, CommentIcon, EditIcon, PaperclipIcon, PlayIcon, TrashIcon, UndoIcon } from './Icons';
+import People from './People';
+import { AlertIcon, CalendarIcon, CheckIcon, CommentIcon, EditIcon, HandIcon, PaperclipIcon, PlayIcon, TrashIcon, UndoIcon } from './Icons';
 import { isOverdue } from '../utils/dates';
 import { ACCEPT } from '../utils/files';
 import { NEXT_STEP, opensCard, statusNote } from '../utils/taskStatus';
@@ -10,8 +10,8 @@ const STEP_ICONS = { todo: PlayIcon, 'in-progress': CheckIcon, done: UndoIcon };
 
 // One card on the project board
 export default function TaskCard({
-  projectId, task: t, person, isMine, isOwner, canManage, canChangeStatus, draggable, justMoved, beingDragged,
-  onOpen, onStatus, onEdit, onDelete, onSuggestion, onDragStart, onDragEnd, onFileAdded,
+  projectId, task: t, people, isMine, isOwner, canManage, canChangeStatus, canTake, draggable, justMoved, beingDragged,
+  onOpen, onStatus, onTake, onEdit, onDelete, onSuggestion, onDragStart, onDragEnd, onFileAdded,
 }) {
   const overdue = isOverdue(t);
   const next = NEXT_STEP[t.status];
@@ -125,12 +125,9 @@ export default function TaskCard({
       )}
 
       <div className="task-people">
-        <Avatar user={person} size={24} />
-        <span>
-          {person ? person.name : 'Unassigned'}
-          {isMine && <span className="you-tag">You</span>}
-          {t.suggestedBy && <small className="muted"> · waiting to accept</small>}
-        </span>
+        <People people={people} size={24} />
+        {isMine && <span className="you-tag">You</span>}
+        {t.suggestedBy && <small className="muted">· waiting to accept</small>}
       </div>
 
       {uploading && (
@@ -141,6 +138,11 @@ export default function TaskCard({
       )}
 
       <div className="task-actions">
+        {canTake && (
+          <button type="button" className="btn btn-sm btn-primary take-btn" onClick={() => onTake(t)} aria-label={`Take ${t.title}`}>
+            <HandIcon size={15} /> Take
+          </button>
+        )}
         {canChangeStatus && (
           <button
             type="button"
