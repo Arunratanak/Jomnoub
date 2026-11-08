@@ -11,6 +11,9 @@ import Profile from "./pages/Profile";
 import VerifyEmail from "./pages/VerifyEmail";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import Welcome from "./pages/Welcome";
+import Loading from "./components/Loading";
+import { useAuth } from "./context/AuthContext";
 
 // A fresh ProjectPage per project, so switching in the sidebar never shows stale data
 function ProjectRoute() {
@@ -24,9 +27,17 @@ function OldTimelineLink() {
   return <Navigate to={`/projects/${id}?tab=timeline`} replace />;
 }
 
+// The front page: the welcome page when signed out, Home when signed in
+function FrontPage() {
+  const { user, loading } = useAuth();
+  if (loading) return <Loading />;
+  return user ? <Navigate to="/dashboard" replace /> : <Welcome />;
+}
+
 export default function App() {
   return (
     <Routes>
+      <Route path="/" element={<FrontPage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
@@ -53,7 +64,7 @@ export default function App() {
         <Route path="/projects/:id" element={<ProjectRoute />} />
         <Route path="/projects/:id/timeline" element={<OldTimelineLink />} />
       </Route>
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

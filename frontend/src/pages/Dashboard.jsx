@@ -106,8 +106,16 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [filter, setFilter] = useState('all');
-  const [creating, setCreating] = useState(false);
-  const [joining, setJoining] = useState(false);
+  // Opened straight away when coming back from signing in to create or join one
+  const [creating, setCreating] = useState(() => params.get('new') === 'project');
+  const [joining, setJoining] = useState(() => params.get('join') === '1');
+  useEffect(() => {
+    if (!params.has('new') && !params.has('join')) return;
+    const next = new URLSearchParams(params);
+    next.delete('new');
+    next.delete('join');
+    setParams(next, { replace: true });
+  }, [params, setParams]);
   const [editing, setEditing] = useState(null); // the project being edited
 
   const load = () =>

@@ -101,8 +101,8 @@ The browser only ever talks to the static site's domain; Render forwards `/api/*
 backend/
   index.js               starts the server (loads .env, connects to MongoDB)
   app.js                 Express app: middleware, routes, error handler
-  scripts/seed.js        demo data (npm run seed / seed:clear)
   src/
+    scripts/             seed.js (demo data: npm run seed / seed:clear), check-storage.js
     config/              db (MongoDB connection), auth (cookie and JWT settings)
     routes/              URL -> middlewares -> controller, one file per area (*Routes.js)
     controllers/         read the request, call a service, send the response (*Controller.js)
@@ -132,7 +132,7 @@ frontend/
   src/utils/             dates, timeline, taskStatus, events, feedback, chatRead, theme, colors,
                          useTitle, useClickOutside
 .github/workflows/reminders.yml   daily reminder job
-docs/                    SECURITY.md, TEST_PLAN.md, PRESENTATION.md
+SECURITY.md              each security measure and how to demonstrate it
 ```
 
 ## API overview
@@ -250,7 +250,7 @@ Vite builds these into the public JavaScript, so they must never contain secrets
 - **Free-tier cold starts.** The Render backend sleeps when idle; the first request can take 30 to 60 seconds. The app shows "Waking up the server..." after 4 seconds, and the reminder workflow retries.
 - **Email needs a verified domain.** With the default `onboarding@resend.dev` sender, Resend only delivers to the email address of the Resend account owner. Reminders, verification and password reset need a domain verified in Resend, with `EMAIL_FROM` set to an address on it.
 - **Push notifications are not implemented.** The bell is in-app only and checks every 30 seconds, on window focus and after your own changes; there is no real-time push (no WebSockets, no browser push), and notifications are not emailed.
-- **No automated test suite in the repository.** The features were tested with scripts run outside the repo and with the manual plan in [docs/TEST_PLAN.md](docs/TEST_PLAN.md).
+- **No automated test suite in the repository.** The features were tested with scripts run outside the repo.
 - **Roles.** A project has exactly one owner; there is no way to promote a member or transfer ownership.
 - **Chat isn't instant.** It checks for new messages every 5 seconds while open (no WebSockets), has no file attachments, and tracks "unread" per browser, not per account.
 - **Suggestions aren't emailed.** The owner sees them in the app only.
@@ -263,6 +263,4 @@ Vite builds these into the public JavaScript, so they must never contain secrets
 
 ## More documentation
 
-- [docs/SECURITY.md](docs/SECURITY.md): each security measure, where it lives, and how to demonstrate it
-- [docs/TEST_PLAN.md](docs/TEST_PLAN.md): two-account manual test script
-- [docs/PRESENTATION.md](docs/PRESENTATION.md): 5 to 8 minute talk and demo plan
+- [SECURITY.md](SECURITY.md): each security measure, where it lives, and how to demonstrate it

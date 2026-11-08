@@ -773,3 +773,35 @@ details summary { cursor: pointer; color: var(--text-2); font-size: 13px; }
   .bottom-nav a:hover { text-decoration: none; }
   .bottom-nav a.active { color: var(--accent-text); font-weight: 500; }
 }
+
+/* ---------- Welcome (signed-out home page) ---------- */
+.welcome { min-height: 100vh; background: var(--surface-2); }
+.welcome-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.welcome-logo { display: inline-flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 500; }
+.welcome-bar-actions { display: flex; align-items: center; gap: 8px; }
+.welcome-main { display: grid; gap: 28px; max-width: 960px; margin: 0 auto; padding: 40px 16px 24px; }
+.welcome-hero { display: grid; justify-items: center; gap: 14px; text-align: center; }
+.welcome-hero h1 { max-width: 640px; font-size: clamp(28px, 6vw, 42px); line-height: 1.15; }
+.welcome-hero p { max-width: 520px; color: var(--text-2); font-size: 17px; }
+.btn-lg { min-height: 48px; padding: 0 32px; border-radius: 24px; font-size: 17px; }
+.welcome-start { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.welcome-action {
+  display: flex; align-items: center; gap: 14px; padding: 18px; text-align: left;
+  border: 1px solid var(--border); border-radius: 14px; background: var(--surface); color: var(--text);
+  font: inherit; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+}
+.welcome-action:hover { border-color: var(--accent); background: var(--hover); }
+.welcome-action > svg { flex: none; width: 44px; height: 44px; padding: 10px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-text); }
+.welcome-action span { display: grid; gap: 2px; }
+.welcome-action small { color: var(--text-2); }
+.welcome-features { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.welcome-feature { display: grid; gap: 6px; align-content: start; padding: 18px; border-radius: 14px; background: var(--surface); }
+.welcome-feature > svg { color: var(--accent-text); }
+.welcome-feature h2 { font-size: 16px; }
+.welcome-feature p { color: var(--text-2); font-size: 14px; }
+.welcome-footer { display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--text-2); font-size: 13px; }
+.welcome-ask-actions { margin-top: 20px; }
+@media (max-width: 480px) {
+  .welcome-main { padding-top: 28px; }
+  .welcome-ask-actions .btn { flex: 1; }
+}

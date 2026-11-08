@@ -1,4 +1,4 @@
-// Demo content for scripts/seed.js (npm run seed). Fake people only.
+// Demo content for src/scripts/seed.js (npm run seed). Fake people only.
 
 export const DEMO_PROJECT = {
   name: 'Demo project',

@@ -1,7 +1,4 @@
-// Checks the file storage settings: npm run check:storage
-// Uploads a small test file, reads it back and deletes it. Prints no keys.
-import 'dotenv/config';
-import { createUpload, deleteFile, missingR2Vars, openDownload, usingR2 } from '../src/services/storageService.js';
+import { createUpload, deleteFile, missingR2Vars, openDownload, usingR2 } from '../services/storageService.js';
 
 if (!usingR2()) {
   console.error(`Cloudflare R2 isn't configured. Add these to backend/.env: ${missingR2Vars().join(', ')}`);

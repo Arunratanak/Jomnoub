@@ -1,28 +1,21 @@
-// Demo data for presentations. Never runs automatically.
-//
-//   npm run seed          create (or re-create) the demo project for SEED_EMAIL
-//   npm run seed:clear    remove all demo data, nothing else
-//
-// Refuses to run when NODE_ENV=production unless you add --force:
-//   npm run seed -- --force
 import 'dotenv/config';
 import dns from 'node:dns';
 import mongoose from 'mongoose';
-import User from '../src/models/User.js';
-import Project from '../src/models/Project.js';
-import Task from '../src/models/Task.js';
-import Activity from '../src/models/Activity.js';
-import Invite from '../src/models/Invite.js';
-import ReminderLog from '../src/models/ReminderLog.js';
-import { quote } from '../src/services/activityService.js';
-import Message from '../src/models/Message.js';
-import Comment from '../src/models/Comment.js';
-import Notification from '../src/models/Notification.js';
-import { deleteProjectAttachments } from '../src/services/attachmentService.js';
+import User from '../models/User.js';
+import Project from '../models/Project.js';
+import Task from '../models/Task.js';
+import Activity from '../models/Activity.js';
+import Invite from '../models/Invite.js';
+import ReminderLog from '../models/ReminderLog.js';
+import { quote } from '../services/activityService.js';
+import Message from '../models/Message.js';
+import Comment from '../models/Comment.js';
+import Notification from '../models/Notification.js';
+import { deleteProjectAttachments } from '../services/attachmentService.js';
 import {
   DEMO_PROJECT, DEMO_TEAMMATES as TEAMMATES, DEMO_TASKS as TASKS,
   DEMO_COMMENTS, DEMO_SUBTASKS, DEMO_SUGGESTIONS, DEMO_MESSAGES,
-} from '../src/data/demoData.js';
+} from '../data/demoData.js';
 
 const args = process.argv.slice(2);
 const CLEAR = args.includes('--clear');

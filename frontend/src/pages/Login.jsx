@@ -29,7 +29,7 @@ export default function Login() {
   const { theme } = useTheme();
   useTitle('Sign in');
   const location = useLocation();
-  const [mode, setMode] = useState('login'); // 'login' | 'register'
+  const [mode, setMode] = useState(location.state?.mode === 'register' ? 'register' : 'login'); // 'login' | 'register'
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -73,6 +73,8 @@ export default function Login() {
           </div>
           <div className="center-body">
             {fromInvite && <p><strong>Sign in to accept your project invite.</strong></p>}
+            {from === '/dashboard?new=project' && <p><strong>Log in or sign up to create your project.</strong></p>}
+            {from === '/dashboard?join=1' && <p><strong>Log in or sign up to join a project.</strong></p>}
 
             <div className="auth-tabs" role="tablist" aria-label="Sign in or create an account">
               <button type="button" role="tab" aria-selected={!isRegister} className={`auth-tab${!isRegister ? ' active' : ''}`} onClick={() => switchMode('login')}>Sign in</button>
@@ -124,7 +126,7 @@ export default function Login() {
               }}
               onError={() => setError('Google sign-in was cancelled or failed.')}
             />
-            <small><Link to="/privacy">Privacy policy</Link></small>
+            <small><Link to="/">Back to home</Link> · <Link to="/privacy">Privacy policy</Link></small>
           </div>
         </div>
       )}

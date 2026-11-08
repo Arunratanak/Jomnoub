@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema(
     emailVerified: { type: Boolean, default: false },
     // Part of the session JWT. Increasing it ends all of this user's sessions.
     tokenVersion: { type: Number, default: 0 },
-    // Fake teammates created by scripts/seed.js. They can't sign in and the
+    // Fake teammates created by src/scripts/seed.js. They can't sign in and the
     // reminder job never emails them.
     isDemo: { type: Boolean, default: false },
   },
