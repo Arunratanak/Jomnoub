@@ -1,25 +1,23 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react';
-import { TAB_ID } from '../api/client';
+import api, { TAB_ID } from '../api/client';
 
-// One live connection per open page, shared by everything on it. The server sends a short
-// message whenever something changes ("tasks in project X"), and whatever shows that part
-// reloads it. If the connection can't be made, or messages stop arriving, pages fall back
-// to checking every few seconds (see useLiveStatus) and the connection is retried.
+// Live updates: while the page is visible, it asks the server every few seconds whether
+// anything has changed ("tasks in project X"), and whatever shows that part reloads it.
+// Each check is a short request; nothing is held open. A hidden page stops checking and
+// catches up as soon as it's shown again. If checks fail, pages fall back to reloading by
+// themselves (see useLiveStatus) and checks are retried, less often each time.
 const CHANGE = 'jomnoub:live-change';
-const READY_WAIT_MS = 10000; // no "ready" by then: something on the way is holding messages back
-const SILENT_MS = 70000; // the server pings every 25 s, so this long without anything is a dead line
-const RETRY_FIRST_MS = 3000;
-const RETRY_MAX_MS = 60000;
+const CHECK_MS = 3000;
+const RETRY_MAX_MS = 30000;
 
-let source = null;
 let status = 'off'; // 'off' | 'connecting' | 'live' | 'offline'
 let wanted = false;
-let everLive = false;
-let lastHeard = 0;
-let retryDelay = RETRY_FIRST_MS;
-let readyTimer = null;
-let retryTimer = null;
-let watchdog = null;
+let boot = null; // which server run the counter below belongs to
+let since = 0; // the server's change counter at the last check
+let failures = 0;
+let timer = null;
+let inFlight = false;
+let generation = 0; // stopping makes the answer to a check still on its way ignored
 const statusListeners = new Set();
 
 function setStatus(next) {
@@ -29,104 +27,79 @@ function setStatus(next) {
 }
 
 const emit = (change) => window.dispatchEvent(new CustomEvent(CHANGE, { detail: change }));
-const streamUrl = () => `${(import.meta.env.VITE_API_URL || '').replace(/\/$/, '')}/live?tab=${encodeURIComponent(TAB_ID)}`;
 
-function closeSource() {
-  clearTimeout(readyTimer);
-  if (source) {
-    source.close();
-    source = null;
+function schedule() {
+  clearTimeout(timer);
+  timer = null;
+  if (!wanted || document.hidden) return;
+  const delay = failures ? Math.min(CHECK_MS * 2 ** failures, RETRY_MAX_MS) : CHECK_MS;
+  timer = setTimeout(check, delay);
+}
+
+async function check() {
+  clearTimeout(timer);
+  timer = null;
+  if (!wanted || inFlight || document.hidden) return;
+  inFlight = true;
+  const run = generation;
+  try {
+    const { data } = await api.get('/live/changes', { params: { since, boot: boot || undefined, tab: TAB_ID } });
+    if (run !== generation) return;
+    const first = !boot;
+    boot = data.boot;
+    since = data.seq;
+    failures = 0;
+    setStatus('live');
+    // The server restarted, or this page was away too long: everything reloads once
+    if (!first && data.resync) emit({ type: 'resync' });
+    else data.changes.forEach(emit);
+  } catch {
+    if (run !== generation) return;
+    failures += 1;
+    setStatus('offline');
+  } finally {
+    if (run === generation) {
+      inFlight = false;
+      schedule();
+    }
   }
 }
 
-function retryLater() {
-  closeSource();
-  clearTimeout(retryTimer);
-  if (!wanted) return;
-  retryTimer = setTimeout(connect, retryDelay);
-  retryDelay = Math.min(retryDelay * 2, RETRY_MAX_MS);
-}
-
-function connect() {
-  closeSource();
-  if (status !== 'offline') setStatus('connecting');
-  source = new EventSource(streamUrl(), { withCredentials: true });
-  readyTimer = setTimeout(() => {
-    setStatus('offline');
-    retryLater();
-  }, READY_WAIT_MS);
-
-  source.addEventListener('ready', () => {
-    clearTimeout(readyTimer);
-    lastHeard = Date.now();
-    retryDelay = RETRY_FIRST_MS;
-    const cameBack = everLive;
-    everLive = true;
-    setStatus('live');
-    // Anything that changed while disconnected was missed: everyone reloads once
-    if (cameBack) emit({ type: 'resync' });
-  });
-  source.addEventListener('ping', () => { lastHeard = Date.now(); });
-  source.addEventListener('change', (e) => {
-    lastHeard = Date.now();
-    try {
-      emit(JSON.parse(e.data));
-    } catch {
-      // A malformed message is ignored
-    }
-  });
-  source.onerror = () => {
-    // The browser retries a dropped connection by itself; a refused one (e.g. signed out) it doesn't
-    if (status === 'live') setStatus('connecting');
-    if (source?.readyState === EventSource.CLOSED) retryLater();
-  };
-}
-
-// Back online, or back to a tab that has been quiet too long (e.g. after the computer
-// slept): the line may look open while messages were lost, so start a fresh one. The new
-// connection's "ready" makes every page catch up.
-const STALE_MS = 40000;
-function reconnectNow() {
-  if (!wanted) return;
-  clearTimeout(retryTimer);
-  retryDelay = RETRY_FIRST_MS;
-  connect();
-}
-const onOffline = () => setStatus('offline');
-const onVisible = () => {
-  if (!document.hidden && status === 'live' && Date.now() - lastHeard > STALE_MS) reconnectNow();
+const onOnline = () => {
+  failures = 0;
+  check();
 };
+const onOffline = () => setStatus('offline');
+const onVisibility = () => (document.hidden ? clearTimeout(timer) : check());
 
 export function startLive() {
-  if (wanted || typeof EventSource === 'undefined') return;
+  if (wanted) return;
   wanted = true;
-  retryDelay = RETRY_FIRST_MS;
-  window.addEventListener('online', reconnectNow);
+  generation += 1;
+  setStatus('connecting');
+  window.addEventListener('online', onOnline);
   window.addEventListener('offline', onOffline);
-  document.addEventListener('visibilitychange', onVisible);
-  connect();
-  watchdog = setInterval(() => {
-    if (status === 'live' && Date.now() - lastHeard > SILENT_MS) {
-      setStatus('offline');
-      retryLater();
-    }
-  }, 15000);
+  document.addEventListener('visibilitychange', onVisibility);
+  check();
 }
 
 export function stopLive() {
   wanted = false;
-  window.removeEventListener('online', reconnectNow);
+  generation += 1;
+  inFlight = false;
+  clearTimeout(timer);
+  timer = null;
+  boot = null;
+  since = 0;
+  failures = 0;
+  window.removeEventListener('online', onOnline);
   window.removeEventListener('offline', onOffline);
-  document.removeEventListener('visibilitychange', onVisible);
-  everLive = false;
-  clearTimeout(retryTimer);
-  clearInterval(watchdog);
-  closeSource();
+  document.removeEventListener('visibilitychange', onVisibility);
   setStatus('off');
 }
 
-// Calls fn(change) for each change, and { type: 'resync' } after a reconnection. Returns
-// a function that stops listening.
+// Calls fn(change) for each change, and { type: 'resync' } when everything should
+// reload. Returns a function that stops listening.
 export function onLiveChange(fn) {
   const listener = (e) => fn(e.detail);
   window.addEventListener(CHANGE, listener);
@@ -142,7 +115,7 @@ export function useLiveChanges(handler) {
   useEffect(() => onLiveChange((change) => latest.current(change)), []);
 }
 
-// 'live' while messages are arriving; anything else means pages should check by themselves
+// 'live' while checks are working; anything else means pages should reload by themselves
 export function useLiveStatus() {
   return useSyncExternalStore(
     (listener) => {
@@ -155,15 +128,15 @@ export function useLiveStatus() {
 
 // Runs fn once a burst of calls has settled
 export function debounce(fn, ms) {
-  let timer = null;
+  let pending = null;
   const run = (...args) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), ms);
+    clearTimeout(pending);
+    pending = setTimeout(() => fn(...args), ms);
   };
-  run.cancel = () => clearTimeout(timer);
+  run.cancel = () => clearTimeout(pending);
   return run;
 }
 
-// Is this change about the given project, for one of these areas? A reconnection counts too.
+// Is this change about the given project, for one of these areas? A full reload counts too.
 export const isAbout = (change, projectId, areas) =>
   change.type === 'resync' || (change.type === 'project' && change.projectId === projectId && (!areas || areas.includes(change.area)));

@@ -32,14 +32,16 @@ app.use(cors({
 // Request log: method, path, status and timing only (never bodies, cookies or IPs).
 // Invite tokens in URLs are hidden so the logs can't be used to join projects.
 morgan.token('safe-url', (req) => req.originalUrl.replace(/(\/api\/invites\/)[^/?]+/, '$1[token]'));
-app.use(morgan(':method :safe-url :status :res[content-length] - :response-time ms'));
+// Successful live update checks are left out: each visible page makes one every few seconds.
+const isLiveCheck = (req, res) => req.originalUrl.startsWith('/api/live/') && res.statusCode < 400;
+app.use(morgan(':method :safe-url :status :res[content-length] - :response-time ms', { skip: isLiveCheck }));
 
 app.use(express.json({ limit: '10kb' }));
 app.use(cookieParser());
 
+app.use('/api/live', liveRoutes); // before the general limit: has its own (see liveLimiter)
 app.use('/api', generalLimiter);
-app.use('/api', announceChanges); // tells open pages what changed, after each successful change
-app.use('/api/live', liveRoutes);
+app.use('/api', announceChanges); // notes what changed, after each successful change
 app.use('/api/auth/google', loginLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/status', statusRoutes);

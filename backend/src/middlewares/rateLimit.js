@@ -34,6 +34,10 @@ function cookieUserKey(req) {
 // Everything under /api: 600 requests per 15 minutes per user (or IP)
 export const generalLimiter = rateLimit({ ...common, windowMs: 15 * MINUTE, limit: 600, keyGenerator: cookieUserKey });
 
+// Live update checks, counted separately: a visible page checks every few seconds
+// (about 300 per 15 minutes), so this allows several open at once
+export const liveLimiter = rateLimit({ ...common, windowMs: 15 * MINUTE, limit: 1500, keyGenerator: cookieUserKey });
+
 // Google sign-in: 30 attempts per 15 minutes per IP (no user yet at login)
 export const loginLimiter = rateLimit({ ...common, windowMs: 15 * MINUTE, limit: 30, keyGenerator: ipKey });
 

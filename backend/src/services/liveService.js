@@ -1,89 +1,67 @@
-// Live updates: each open page keeps one connection (server-sent events) and is told
-// when something it shows has changed. Messages only say WHAT changed ("tasks in project
-// X"), never the content: the page then reloads it through the normal API, with all its
-// permission checks. So a live connection can't reveal anything its viewer couldn't
-// already load.
+import { randomUUID } from 'node:crypto';
+
+// Live updates: each visible page asks every few seconds "has anything changed since my
+// last check?" and reloads only the parts that did. A short request each time, rather than
+// a connection held open, so nothing piles up in Render's network or keeps a request
+// waiting.
 //
-// Connections are kept in this process's memory, which suits a single server (as on
-// Render's free plan). Several servers would need a shared message bus instead.
+// Changes only say WHAT changed ("tasks in project X"), never the content: the page then
+// reloads it through the normal API, with all its permission checks. So this can't reveal
+// anything its viewer couldn't already load.
+//
+// The list is kept in this process's memory, which suits a single server (as on Render's
+// free plan). Several servers would need a shared store instead.
 
-const PING_MS = 25000; // keeps proxies from closing a quiet connection
-const MAX_PER_USER = 10; // open tabs per person; the oldest is closed beyond this
-const MAX_TOTAL = 2000;
+const KEEP_MS = 10 * 60 * 1000; // a page away longer than this reloads everything instead
+const MAX_KEEP = 5000; // changes kept across everyone
+const MAX_PER_CHECK = 50; // more than this since the last check: reload everything instead
 
-const byUser = new Map(); // userId -> Set of { res, tab }
-let total = 0;
-let pingTimer = null;
+// Changes from before a restart are gone, so pages that see a new id reload everything
+const BOOT = randomUUID();
+let seq = 0;
+let floor = 0; // the newest change already dropped from the list
+const log = []; // oldest first: { seq, at, users: Set of user ids, change, tab }
 
 const TAB_ID = /^[\w-]{8,64}$/;
 export const cleanTabId = (value) => (typeof value === 'string' && TAB_ID.test(value) ? value : null);
 
-function write(client, event, data) {
-  try {
-    client.res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-  } catch {
-    // The connection is closing; its close handler removes it
+function prune(now = Date.now()) {
+  let drop = 0;
+  while (drop < log.length && (log.length - drop > MAX_KEEP || now - log[drop].at > KEEP_MS)) drop += 1;
+  if (drop) {
+    floor = log[drop - 1].seq;
+    log.splice(0, drop);
   }
 }
 
-export function sendPings() {
-  for (const clients of byUser.values()) for (const client of clients) write(client, 'ping', {});
-}
-
-function removeClient(userId, client) {
-  const clients = byUser.get(userId);
-  if (!clients?.delete(client)) return;
-  total -= 1;
-  if (clients.size === 0) byUser.delete(userId);
-  if (total === 0 && pingTimer) {
-    clearInterval(pingTimer);
-    pingTimer = null;
-  }
-}
-
-// Starts a stream for this request. Returns false if the server is at its limit.
-export function openStream(req, res) {
-  if (total >= MAX_TOTAL) return false;
-  const userId = String(req.user._id);
-  const client = { res, tab: cleanTabId(req.query.tab) };
-
-  res.set({
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache, no-transform',
-    Connection: 'keep-alive',
-    'X-Accel-Buffering': 'no', // tells proxies not to hold the stream back
-  });
-  res.flushHeaders();
-  res.write('retry: 3000\n\n');
-
-  const clients = byUser.get(userId) || new Set();
-  if (clients.size >= MAX_PER_USER) {
-    const oldest = clients.values().next().value;
-    removeClient(userId, oldest);
-    oldest.res.end();
-  }
-  clients.add(client);
-  byUser.set(userId, clients);
-  total += 1;
-  if (!pingTimer) {
-    pingTimer = setInterval(sendPings, PING_MS);
-    pingTimer.unref?.();
-  }
-
-  write(client, 'ready', {});
-  req.on('close', () => removeClient(userId, client));
-  return true;
-}
-
-// Tells these people that something changed. The tab that made the change is skipped,
-// since it has already updated itself.
+// Notes that something changed for these people. The tab that made the change is left
+// out of its own results, since it has already updated itself.
 export function announce(userIds, change, { exceptTab = null } = {}) {
-  for (const id of new Set(userIds.filter(Boolean).map(String))) {
-    for (const client of byUser.get(id) || []) {
-      if (exceptTab && client.tab === exceptTab) continue;
-      write(client, 'change', change);
-    }
-  }
+  const users = new Set(userIds.filter(Boolean).map(String));
+  if (!users.size) return;
+  seq += 1;
+  log.push({ seq, at: Date.now(), users, change, tab: exceptTab });
+  prune();
 }
 
-export const openConnections = () => total;
+// What changed for this person since their page's last check. `resync` means the page
+// should reload everything: the server restarted, or the page was away too long.
+export function changesFor(userId, { since, boot, tab }) {
+  prune();
+  const now = { boot: BOOT, seq };
+  if (!boot) return { ...now, changes: [], resync: false }; // a page's first check
+  if (boot !== BOOT || !Number.isSafeInteger(since) || since < floor || since > seq) {
+    return { ...now, changes: [], resync: true };
+  }
+  const id = String(userId);
+  const changes = [];
+  for (let i = log.length - 1; i >= 0 && log[i].seq > since; i -= 1) {
+    const entry = log[i];
+    if (entry.users.has(id) && !(tab && entry.tab === tab)) changes.push(entry.change);
+  }
+  if (changes.length > MAX_PER_CHECK) return { ...now, changes: [], resync: true };
+  return { ...now, changes: changes.reverse(), resync: false };
+}
+
+// For tests
+export const keptChanges = () => log.length;
