@@ -4,6 +4,7 @@ import Avatar from './Avatar';
 import CommentBox from './CommentBox';
 import { TrashIcon } from './Icons';
 import { timeAgo } from '../utils/dates';
+import { isAbout, onLiveChange } from '../utils/live';
 import { confirmDialog, toast } from '../utils/feedback';
 
 const REFRESH_MS = 15000; // only while this task is open
@@ -57,9 +58,15 @@ export default function CommentList({ projectId, task, user, isOwner, members, h
     };
     load();
     const timer = setInterval(load, REFRESH_MS);
-    return () => clearInterval(timer);
+    const stopListening = onLiveChange((change) => {
+      if (isAbout(change, projectId, ['comments']) && (change.type === 'resync' || change.taskId === task._id)) load();
+    });
+    return () => {
+      clearInterval(timer);
+      stopListening();
+    };
     // A notification for a brand new comment changes highlightId: fetch it straight away
-  }, [base, highlightId]);
+  }, [base, highlightId, projectId, task._id]);
 
   // Keeps the count on the task's card in step, including other people's comments
   useEffect(() => {

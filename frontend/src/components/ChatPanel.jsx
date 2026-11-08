@@ -3,6 +3,7 @@ import api from '../api/client';
 import Avatar from './Avatar';
 import { TrashIcon } from './Icons';
 import { setLastRead } from '../utils/chatRead';
+import { isAbout, onLiveChange } from '../utils/live';
 import { confirmDialog, toast } from '../utils/feedback';
 
 const POLL_MS = 5000; // checks for new messages only while this panel is open and visible
@@ -61,12 +62,14 @@ export default function ChatPanel({ projectId, user, isOwner, onSeen }) {
     timer = setInterval(tick, POLL_MS);
     window.addEventListener('focus', tick);
     document.addEventListener('visibilitychange', tick);
+    const stopListening = onLiveChange((change) => { if (isAbout(change, projectId, ['chat'])) refresh(); });
     return () => {
       clearInterval(timer);
       window.removeEventListener('focus', tick);
       document.removeEventListener('visibilitychange', tick);
+      stopListening();
     };
-  }, [refresh]);
+  }, [refresh, projectId]);
 
   // Keep the view in the right place whenever the list changes
   useLayoutEffect(() => {

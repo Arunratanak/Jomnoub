@@ -5,6 +5,7 @@ import Avatar from './Avatar';
 import { BellIcon } from './Icons';
 import { isOverdue, needsAttention, timeAgo } from '../utils/dates';
 import { TASKS_CHANGED } from '../utils/events';
+import { debounce, onLiveChange } from '../utils/live';
 import useClickOutside from '../utils/useClickOutside';
 
 const MAX_ATTENTION = 5;
@@ -55,11 +56,17 @@ export default function NotificationBell() {
     const timer = setInterval(load, CHECK_MS);
     window.addEventListener('focus', load);
     window.addEventListener(TASKS_CHANGED, load);
+    const loadSoon = debounce(load, 300);
+    const stopListening = onLiveChange((change) => {
+      if (change.type === 'notifications' || change.type === 'resync' || (change.type === 'project' && change.area === 'tasks')) loadSoon();
+    });
     return () => {
       active = false;
       clearInterval(timer);
       window.removeEventListener('focus', load);
       window.removeEventListener(TASKS_CHANGED, load);
+      stopListening();
+      loadSoon.cancel();
     };
   }, []);
 

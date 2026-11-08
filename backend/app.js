@@ -8,6 +8,8 @@ import projectRoutes from './src/routes/projectRoutes.js';
 import myTaskRoutes from './src/routes/myTaskRoutes.js';
 import profileRoutes from './src/routes/profileRoutes.js';
 import searchRoutes from './src/routes/searchRoutes.js';
+import liveRoutes from './src/routes/liveRoutes.js';
+import announceChanges from './src/middlewares/announceChanges.js';
 import notificationRoutes from './src/routes/notificationRoutes.js';
 import inviteRoutes from './src/routes/inviteRoutes.js';
 import cronRoutes from './src/routes/cronRoutes.js';
@@ -36,6 +38,8 @@ app.use(express.json({ limit: '10kb' }));
 app.use(cookieParser());
 
 app.use('/api', generalLimiter);
+app.use('/api', announceChanges); // tells open pages what changed, after each successful change
+app.use('/api/live', liveRoutes);
 app.use('/api/auth/google', loginLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/status', statusRoutes);

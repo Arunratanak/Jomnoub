@@ -17,6 +17,7 @@ import TodoGroups from '../components/TodoGroups';
 import EditProjectModal from '../components/EditProjectModal';
 import { EditIcon, FolderIcon, LinkIcon, PlusIcon, TrashIcon } from '../components/Icons';
 import { getLastRead } from '../utils/chatRead';
+import { debounce, isAbout, useLiveChanges, useLiveStatus } from '../utils/live';
 import { projectGradient } from '../utils/colors';
 import { isOverdue } from '../utils/dates';
 import { notifyProjectsChanged, notifyTasksChanged } from '../utils/events';
@@ -28,6 +29,7 @@ import useTitle from '../utils/useTitle';
 const ProjectStats = lazy(() => import('../components/ProjectStats'));
 
 const UNREAD_CHECK_MS = 30000;
+const FALLBACK_CHECK_MS = 8000; // only while live updates aren't getting through
 const MOVED_HIGHLIGHT_MS = 900;
 const CARD_SPRING = { type: 'spring', stiffness: 380, damping: 34 };
 const SHOW_TEAMMATES_KEY = 'jomnoub:show-teammates';
@@ -73,6 +75,7 @@ export default function ProjectPage() {
   const [activity, setActivity] = useState(null);
   const [activityError, setActivityError] = useState(false);
   const [unread, setUnread] = useState(false);
+  const [chatSignal, setChatSignal] = useState(0); // a live "new message" nudge for the Chat tab's dot
   const [tasksLoaded, setTasksLoaded] = useState(false);
   const [showTeammates, setShowTeammates] = useState(loadShowTeammates);
   const [movedId, setMovedId] = useState(null); // the card that just changed column
@@ -188,9 +191,44 @@ export default function ProjectPage() {
       clearInterval(timer);
       window.removeEventListener('focus', check);
     };
-  }, [id, tab, user._id, loaded]);
+  }, [id, tab, user._id, loaded, chatSignal]);
 
   const clearUnread = useCallback(() => setUnread(false), []);
+
+  // ---------- Live updates: teammates' changes appear without reloading ----------
+  const latestLoad = useRef(null);
+  useEffect(() => {
+    latestLoad.current = () => loadTasks().catch(() => {});
+  });
+  // Several changes in a row (e.g. a copy for each member) reload once
+  const refreshBoardSoon = useRef(null);
+  useEffect(() => {
+    const soon = debounce(() => latestLoad.current?.(), 250);
+    refreshBoardSoon.current = soon;
+    return soon.cancel;
+  }, []);
+
+  // Renamed, members changed, deleted, or this person was removed (then it shows "not found")
+  const reloadProject = () =>
+    api
+      .get(`/projects/${id}`)
+      .then((res) => setData(res.data))
+      .catch((err) => { if (err.response?.status === 404) setLoadError('notFound'); });
+
+  useLiveChanges((change) => {
+    if (!isAbout(change, id)) return;
+    if (change.type === 'resync' || ['project', 'members', 'access'].includes(change.area)) reloadProject();
+    if (change.type === 'resync' || change.area === 'chat') setChatSignal((n) => n + 1);
+    if (change.area !== 'chat') refreshBoardSoon.current?.();
+  });
+
+  // If live updates aren't getting through, check by ourselves every few seconds
+  const liveStatus = useLiveStatus();
+  useEffect(() => {
+    if (liveStatus === 'live' || !loaded) return undefined;
+    const timer = setInterval(() => { if (!document.hidden) latestLoad.current?.(); }, FALLBACK_CHECK_MS);
+    return () => clearInterval(timer);
+  }, [liveStatus, loaded]);
   const closeProjectEdit = useCallback(() => setEditingProject(false), []);
 
   // Replaces one task in the list with the server's copy

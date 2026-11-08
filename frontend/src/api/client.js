@@ -6,6 +6,12 @@ const api = axios.create({
   withCredentials: true, // sends the login cookie on every request
 });
 
+// Identifies this open page. Live updates are not sent back to the page that made the change.
+export const TAB_ID = typeof crypto !== 'undefined' && crypto.randomUUID
+  ? crypto.randomUUID()
+  : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+api.defaults.headers.common['X-Tab-Id'] = TAB_ID;
+
 export const RATE_LIMIT_MESSAGE = "You're doing that too often. Please wait a few minutes and try again.";
 
 api.interceptors.response.use(undefined, (err) => {

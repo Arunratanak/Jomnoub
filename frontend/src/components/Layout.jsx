@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { PROJECTS_CHANGED } from '../utils/events';
+import { debounce, onLiveChange, startLive, stopLive } from '../utils/live';
 import { toast } from '../utils/feedback';
 import useClickOutside from '../utils/useClickOutside';
 import Avatar, { ProjectMark } from './Avatar';
@@ -107,10 +108,23 @@ export default function Layout() {
         .catch(() => active && setProjects((p) => p || []));
     load();
     window.addEventListener(PROJECTS_CHANGED, load);
+    // Renamed, deleted, joined or left elsewhere
+    const loadSoon = debounce(load, 400);
+    const stopListening = onLiveChange((change) => {
+      if (change.type === 'resync' || (change.type === 'project' && ['project', 'members', 'access'].includes(change.area))) loadSoon();
+    });
     return () => {
       active = false;
       window.removeEventListener(PROJECTS_CHANGED, load);
+      stopListening();
+      loadSoon.cancel();
     };
+  }, []);
+
+  // The live connection lasts as long as the signed-in pages are open
+  useEffect(() => {
+    startLive();
+    return stopLive;
   }, []);
 
   const toggleMenu = () => {

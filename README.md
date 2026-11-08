@@ -48,6 +48,7 @@ Built as a full-stack course final project.
 - Once a day, a GitHub Actions workflow calls the backend, which emails each person one summary of their unfinished tasks that are overdue or due within 2 days (via Resend). The same reminder is never sent twice.
 
 **Interface**
+- **Live updates:** when a teammate changes something, it appears on everyone else's screen within about a second, with no reload: the board, task windows, comments, chat, the bell, Home, My tasks and the sidebar. Each open page keeps one server-sent events connection (`GET /api/live`). Messages only say what changed ("tasks in project X"); the page then reloads that part through the normal API, so the stream never carries content. If the connection can't get through, the board checks by itself every 8 seconds, and after the connection drops (or the computer sleeps) everything catches up when it returns.
 - App frame with a top bar, search across projects and tasks (results appear as you type and open a task directly), a collapsible sidebar (a drawer plus bottom navigation on phones), and project pages with Board, Chat, Progress, Members, Activity and Settings tabs. The open tab is kept in the URL, so refreshing stays on it.
 - Toast messages and styled confirm dialogs. If a session expires, you're sent to sign in and then back to the same page.
 - Green theme with a light/dark toggle. It starts from the device's preference and remembers your choice in this browser.
@@ -155,6 +156,7 @@ All routes are under `/api`. Everything requires login except `GET /status`, `PO
 | `POST`, `DELETE /projects/:projectId/invites` | owner (generate / disable link) |
 | `POST /projects/:projectId/tasks/assign-all` | members (a task for each member) |
 | `POST /projects/:projectId/tasks/:taskId/take` | any member, for a task nobody has |
+| `GET /live` | signed in: a stream of "this changed" messages for your projects and notifications |
 | `GET /search?q=` | your projects and tasks matching the text, only from projects you belong to |
 | `GET`, `POST /projects/:projectId/tasks`, `PATCH`, `DELETE .../tasks/:taskId` | members (edit, move, delete: the owner, anyone assigned, or the creator if nobody is assigned). `POST` takes `assignees` (a list of member ids) and, with `separate: true`, makes a copy for each |
 | `POST .../tasks/:taskId/suggestion/accept`, `/decline` | owner |

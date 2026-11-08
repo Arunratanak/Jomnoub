@@ -13,6 +13,7 @@ import { timeAgo } from '../utils/dates';
 import { notifyProjectsChanged, notifyTasksChanged } from '../utils/events';
 import { confirmDialog, toast } from '../utils/feedback';
 import useClickOutside from '../utils/useClickOutside';
+import { debounce, useLiveChanges } from '../utils/live';
 import useTitle from '../utils/useTitle';
 
 const FILTERS = [
@@ -122,6 +123,12 @@ export default function Dashboard() {
   useEffect(() => {
     load();
   }, []);
+
+  // Teammates' changes show up without a reload
+  const [loadSoon] = useState(() => debounce(() => load(), 500));
+  useLiveChanges((change) => {
+    if (change.type === 'resync' || (change.type === 'project' && change.area !== 'chat' && change.area !== 'comments')) loadSoon();
+  });
 
   const closeCreate = useCallback(() => setCreating(false), []);
 

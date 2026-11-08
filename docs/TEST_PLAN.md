@@ -304,7 +304,23 @@ Use the same two accounts, A (owner) and B (member).
 | 20.11 | Search from an account that isn't in the project | Its tasks are not found |
 | 20.12 | Look at the browser tab and the top-left logo | The new Jomnoub icon is shown; on a phone, "Add to home screen" uses it too |
 
-## 21. Cleanup
+## 21. Live updates
+
+Use two browsers side by side (one normal window, one private), signed in as A and B.
+
+| # | Step | Expected |
+|---|---|---|
+| 21.1 | A: move a task, add one, delete one | B's board follows within about a second, without reloading |
+| 21.2 | B: open a task; A: comment on it, add a subtask, change its stage | Each appears in B's open window |
+| 21.3 | A: post in the project chat while B is on the Board | B's Chat tab gets its dot; on the Chat tab, the message appears at once |
+| 21.4 | A: assign a task to B | B's bell count goes up straight away |
+| 21.5 | A: rename the project | B's heading and sidebar change |
+| 21.6 | B on Home or My tasks; A: add a task for B | B's page updates |
+| 21.7 | A: remove B while B has the project open | B's page shows "Project not found" and the project leaves B's sidebar |
+| 21.8 | B: turn Wi-Fi off, A makes a change, B turns Wi-Fi back on | B catches up within a few seconds |
+| 21.9 | B: DevTools > Network, click the `live` request, then EventStream | Messages say only what changed (no task names or text) |
+
+## 22. Cleanup
 
 - A: delete "Test project" and "Private project" (Settings tab > Delete project on each).
 - If you used demo data: `npm run seed:clear` in `backend`.

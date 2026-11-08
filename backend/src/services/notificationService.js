@@ -1,5 +1,6 @@
 import Notification from '../models/Notification.js';
 import { NotFoundError } from '../exceptions/HttpError.js';
+import { announce } from './liveService.js';
 import { isObjectId } from '../validations/common.js';
 
 const LIST_LIMIT = 30;
@@ -14,6 +15,7 @@ export async function notify(recipients, { actor, type, message, detail = '', pr
     await Notification.insertMany(unique.map((user) => ({
       user, actor, type, message: String(message).slice(0, 200), detail: String(detail).slice(0, 140), project, task, comment,
     })));
+    announce(unique, { type: 'notifications' });
   } catch (err) {
     console.error('Notification failed:', err.message);
   }

@@ -7,6 +7,7 @@ import { firstLetter, projectGradient } from '../utils/colors';
 import { isOverdue } from '../utils/dates';
 import { notifyTasksChanged } from '../utils/events';
 import { toast } from '../utils/feedback';
+import { debounce, useLiveChanges } from '../utils/live';
 import useTitle from '../utils/useTitle';
 
 const STATUSES = [
@@ -50,6 +51,12 @@ export default function MyTasks() {
   useEffect(() => {
     load();
   }, []);
+
+  // Tasks given to you, changed or removed elsewhere show up without a reload
+  const [loadSoon] = useState(() => debounce(() => load(), 500));
+  useLiveChanges((change) => {
+    if (change.type === 'resync' || (change.type === 'project' && ['tasks', 'members', 'access', 'project'].includes(change.area))) loadSoon();
+  });
 
   const changeStatus = async (t, status) => {
     try {
